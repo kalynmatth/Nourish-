@@ -1,0 +1,1 @@
+Nourish is a web application targeting food insecurity and waste management exclusively, providing a real-time scan/interpretation of your pantry, cabinet, shopping cart, etc., to generate a list of recipes tailored to items you already have. The goal is to emphasize that what you have is more than enough. 
