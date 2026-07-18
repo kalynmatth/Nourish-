@@ -1,0 +1,3428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nourish — Cook what you have. Waste nothing.</title>
+  <meta name="description" content="AI-powered recipes from a photo of your pantry. Built for food security, anti-waste cooking, and resourceful kitchens.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,800;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Design tokens ─────────────────────────────────────────── */
+    :root {
+      --ink:    oklch(18% .02 60);
+      --cream:  oklch(96.5% .018 85);
+      --tomato: oklch(62% .21 28);
+      --ochre:  oklch(78% .16 75);
+      --muted:  oklch(45% .02 60);
+      --font-sans:    "Inter", system-ui, sans-serif;
+      --font-display: "Fraunces", Georgia, serif;
+    }
+
+    /* ── Reset ──────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--cream);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: inherit; }
+    ul, ol { list-style: none; }
+    img { display: block; max-width: 100%; }
+    button { cursor: pointer; font-family: inherit; border: none; background: none; }
+    input, textarea, select {
+      font-family: inherit;
+      font-size: inherit;
+      color: inherit;
+    }
+
+    /* ── Utility ────────────────────────────────────────────────── */
+    .grain {
+      background-image: radial-gradient(#00000006 1px, transparent 1px);
+      background-size: 3px 3px;
+    }
+    .text-display {
+      font-family: var(--font-display);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 0.92;
+    }
+    .text-editorial {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-weight: 400;
+    }
+    .container {
+      max-width: 80rem;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+    /* page hide/show */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Membership gate (Recipe Board & Food Share) ──────────────── */
+    .nav-gated { position: relative; }
+    .nav-gated::after {
+      content: '';
+      display: inline-block;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--tomato);
+      margin-left: .4rem;
+      vertical-align: middle;
+      opacity: .75;
+    }
+    .member-gate { padding: 3.5rem 0 5.5rem; }
+    .member-gate-card {
+      max-width: 32rem;
+      margin: 0 auto;
+      text-align: center;
+      border: 2px solid var(--ink);
+      background: var(--cream);
+      padding: 3rem 2.25rem;
+    }
+    .member-gate-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.65rem;
+      letter-spacing: -0.02em;
+      line-height: 1.08;
+      margin-top: .75rem;
+    }
+    .member-gate-body {
+      margin-top: 1rem;
+      font-size: .9375rem;
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 27rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .member-gate-fine {
+      margin-top: .875rem;
+      font-size: .75rem;
+      color: var(--muted);
+      opacity: .8;
+    }
+    .member-gate-actions {
+      margin-top: 1.75rem;
+      display: flex;
+      gap: .75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .member-active-note {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+    }
+    .member-active-note .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--tomato);
+    }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      border-bottom: 2px solid var(--ink);
+      background-color: var(--cream);
+      backdrop-filter: blur(4px);
+    }
+    .site-header .container {
+      padding-top: 1rem;
+      padding-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+      cursor: pointer;
+    }
+    .logo-name {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.5rem;
+      letter-spacing: -0.025em;
+    }
+    .logo-tagline {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .2em;
+      color: var(--muted);
+    }
+    @media (max-width: 639px) { .logo-tagline { display: none; } }
+
+    .site-nav {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+    .site-nav button {
+      padding: 0;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--ink);
+      transition: color .15s;
+      white-space: nowrap;
+    }
+    .site-nav button:hover { color: var(--tomato); }
+    .site-nav button.active {
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+    @media (max-width: 639px) {
+      .site-nav { gap: .875rem; }
+      .nav-manifesto { display: none; }
+    }
+    @media (max-width: 479px) {
+      .nav-foodshare span { display: none; }
+    }
+
+    /* ── Footer ─────────────────────────────────────────────────── */
+    .site-footer {
+      margin-top: 6rem;
+      border-top: 2px solid var(--ink);
+      background-color: var(--ink);
+      color: var(--cream);
+    }
+    .site-footer .footer-grid {
+      display: grid;
+      gap: 2rem;
+      padding: 3rem 0;
+    }
+    @media (min-width: 768px) {
+      .site-footer .footer-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .footer-brand-name {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.875rem;
+      letter-spacing: -0.025em;
+      line-height: 0.92;
+    }
+    .footer-brand-desc {
+      margin-top: .75rem;
+      font-size: .875rem;
+      opacity: .7;
+      max-width: 20rem;
+    }
+    .footer-col-label {
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      opacity: .6;
+      margin-bottom: .75rem;
+      font-size: .875rem;
+    }
+    .footer-links { font-size: .875rem; display: flex; flex-direction: column; gap: .5rem; opacity: .9; }
+    .footer-links a:hover { text-decoration: underline; }
+    .footer-issue { font-size: .875rem; opacity: .9; }
+    .footer-bottom {
+      border-top: 1px solid rgba(255,255,255,.08);
+      padding: 1rem 0;
+      text-align: center;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      opacity: .6;
+    }
+
+    /* ── HOME PAGE ───────────────────────────────────────────────── */
+    .hero-kicker {
+      padding: 2.5rem 0 1.5rem;
+      border-bottom: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .25em;
+      color: var(--muted);
+    }
+    .hero-grid {
+      display: grid;
+      gap: 2rem;
+      padding-bottom: 3rem;
+      border-bottom: 2px solid var(--ink);
+    }
+    @media (min-width: 1024px) {
+      .hero-grid { grid-template-columns: 7fr 5fr; align-items: center; }
+    }
+    .hero-h1 {
+      font-family: var(--font-display);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 0.92;
+      font-size: clamp(3.5rem, 9vw, 8rem);
+      color: var(--ink);
+    }
+    .hero-h1 .accent { color: var(--tomato); }
+    .hero-h1 .italic {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-weight: 400;
+    }
+    .hero-body {
+      margin-top: 2rem;
+      font-size: 1.125rem;
+      max-width: 36rem;
+      color: rgba(0,0,0,.75);
+      line-height: 1.7;
+    }
+    .hero-ctas {
+      margin-top: 2.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: .75rem;
+      background-color: var(--ink);
+      color: var(--cream);
+      padding: 1rem 1.75rem;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      transition: background-color .15s;
+      border: 2px solid var(--ink);
+    }
+    .btn-primary:hover { background-color: var(--tomato); border-color: var(--tomato); }
+    .btn-ghost {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+    .hero-img-wrap { position: relative; }
+    .hero-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      aspect-ratio: 4/5;
+      border: 2px solid var(--ink);
+    }
+    @media (min-width: 1024px) { .hero-img-wrap img { aspect-ratio: auto; } }
+    .hero-badge {
+      position: absolute;
+      bottom: -1rem;
+      left: -1rem;
+      background-color: var(--ochre);
+      color: var(--ink);
+      padding: .5rem 1rem;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      border: 2px solid var(--ink);
+    }
+    @media (max-width: 767px) { .hero-badge { display: none; } }
+
+    .stats-band {
+      background-color: var(--ink);
+      color: var(--cream);
+      border-bottom: 2px solid var(--ink);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.5rem;
+      padding: 2.5rem 0;
+    }
+    @media (min-width: 768px) { .stats-grid { grid-template-columns: repeat(4, 1fr); } }
+    .stat-n {
+      font-family: var(--font-display);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      font-size: clamp(2.25rem, 5vw, 3rem);
+      color: var(--tomato);
+      line-height: 1;
+    }
+    .stat-l {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      opacity: .7;
+      margin-top: .5rem;
+    }
+
+    .method-section { padding: 5rem 0; }
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 3rem;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 0.92;
+      font-size: clamp(2.5rem, 6vw, 3.75rem);
+    }
+    .section-num {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .25em;
+      color: var(--muted);
+    }
+    .method-grid {
+      display: grid;
+      gap: 3rem;
+    }
+    @media (min-width: 768px) { .method-grid { grid-template-columns: repeat(3, 1fr); } }
+    .method-card {
+      border-top: 4px solid var(--ink);
+      padding-top: 1.5rem;
+    }
+    .method-num {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .method-icon { width: 2.5rem; height: 2.5rem; margin-bottom: 1rem; color: var(--tomato); }
+    .method-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      font-size: 1.875rem;
+      margin-bottom: .75rem;
+      line-height: 1;
+    }
+    .method-desc { color: rgba(0,0,0,.7); line-height: 1.6; }
+
+    .cta-band {
+      border-top: 2px solid var(--ink);
+      border-bottom: 2px solid var(--ink);
+      background-color: var(--tomato);
+      color: var(--cream);
+    }
+    .cta-band .container {
+      padding-top: 4rem;
+      padding-bottom: 4rem;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1.5rem;
+    }
+    @media (min-width: 768px) {
+      .cta-band .container {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+      }
+    }
+    .cta-h2 {
+      font-family: var(--font-display);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 0.92;
+      font-size: clamp(2rem, 5vw, 3.75rem);
+      max-width: 34rem;
+    }
+    .btn-invert {
+      display: inline-flex;
+      align-items: center;
+      gap: .75rem;
+      background-color: var(--cream);
+      color: var(--ink);
+      padding: 1rem 1.75rem;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      border: 2px solid var(--cream);
+      transition: background-color .15s, color .15s;
+      white-space: nowrap;
+    }
+    .btn-invert:hover { background-color: var(--ink); color: var(--cream); }
+
+    /* ── SCAN PAGE ───────────────────────────────────────────────── */
+    .scan-hero {
+      padding: 5rem 0;
+      border-bottom: 2px solid var(--ink);
+    }
+    .scan-kicker {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .25em;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+    .scan-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 0.92;
+      font-size: clamp(3rem, 7vw, 6rem);
+      max-width: 30rem;
+    }
+    .scan-title .accent { color: var(--tomato); }
+    .scan-body {
+      margin-top: 2rem;
+      font-size: 1.125rem;
+      max-width: 36rem;
+      color: rgba(0,0,0,.75);
+      line-height: 1.7;
+    }
+    .upload-zone {
+      margin-top: 3rem;
+      border: 2px dashed var(--ink);
+      padding: 4rem 2rem;
+      text-align: center;
+      background-color: rgba(0,0,0,.02);
+      cursor: pointer;
+      transition: background-color .15s;
+      position: relative;
+    }
+    .upload-zone:hover { background-color: rgba(0,0,0,.04); }
+    .upload-zone input[type="file"] {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      opacity: 0; cursor: pointer;
+    }
+    .upload-icon { width: 3rem; height: 3rem; margin: 0 auto 1rem; color: var(--tomato); }
+    .upload-label {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.5rem;
+      letter-spacing: -0.025em;
+      margin-bottom: .5rem;
+    }
+    .upload-sub { font-size: .875rem; color: var(--muted); }
+    .scan-note {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      border-left: 4px solid var(--ochre);
+      background-color: rgba(0,0,0,.02);
+      font-size: .875rem;
+      color: rgba(0,0,0,.7);
+      line-height: 1.6;
+    }
+    .scan-divider {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 2.5rem 0;
+      color: var(--muted);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .2em;
+    }
+    .scan-divider::before, .scan-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background-color: rgba(0,0,0,.15);
+    }
+    .scan-type-actions {
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .scan-type-confirm {
+      font-size: .875rem;
+      color: var(--muted);
+    }
+    .scan-type-confirm.show { color: var(--ink); }
+    .scan-tips {
+      padding: 5rem 0;
+    }
+    .tips-grid {
+      display: grid;
+      gap: 2rem;
+      margin-top: 3rem;
+    }
+    @media (min-width: 768px) { .tips-grid { grid-template-columns: repeat(2, 1fr); } }
+    .tip-card {
+      border: 2px solid var(--ink);
+      padding: 1.5rem;
+    }
+    .tip-card-label {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: .75rem;
+    }
+    .tip-card-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.25rem;
+      letter-spacing: -0.025em;
+      margin-bottom: .5rem;
+    }
+    .tip-card-body { font-size: .875rem; color: rgba(0,0,0,.7); line-height: 1.6; }
+
+    /* ── ABOUT/MANIFESTO PAGE ────────────────────────────────────── */
+    .manifesto-article {
+      max-width: 48rem;
+      margin: 0 auto;
+      padding: 5rem 1.5rem;
+    }
+    .manifesto-kicker {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .25em;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+    .manifesto-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 0.92;
+      font-size: clamp(3.5rem, 8vw, 6rem);
+      margin-bottom: 2.5rem;
+    }
+    .manifesto-title .accent { color: var(--tomato); font-style: italic; font-weight: 400; }
+    .manifesto-body { display: flex; flex-direction: column; gap: 1.5rem; font-size: 1.125rem; line-height: 1.7; color: rgba(0,0,0,.85); }
+    .manifesto-lede { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 1.5rem; }
+    .manifesto-pull {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: 1.5rem;
+      font-weight: 400;
+      border-left: 4px solid var(--tomato);
+      padding-left: 1.5rem;
+      color: var(--ink);
+    }
+    .manifesto-cta {
+      margin-top: 3rem;
+      display: inline-flex;
+      align-items: center;
+      gap: .75rem;
+      background-color: var(--ink);
+      color: var(--cream);
+      padding: 1rem 1.75rem;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      border: 2px solid var(--ink);
+      transition: background-color .15s;
+      cursor: pointer;
+    }
+    .manifesto-cta:hover { background-color: var(--tomato); border-color: var(--tomato); }
+
+    /* ── RECIPE BOARD PAGE ───────────────────────────────────────── */
+    .board-hero {
+      border-bottom: 2px solid var(--ink);
+      padding: 3rem 0 2.5rem;
+    }
+    .board-kicker {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .25em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .board-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 0.92;
+      font-size: clamp(2.5rem, 6vw, 5rem);
+    }
+    .board-title .accent { color: var(--tomato); }
+    .board-desc {
+      margin-top: 1.25rem;
+      font-size: 1rem;
+      max-width: 36rem;
+      color: rgba(0,0,0,.7);
+      line-height: 1.65;
+    }
+    .board-incognito-note {
+      margin-top: 1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      background-color: var(--ochre);
+      color: var(--ink);
+      padding: .375rem .875rem;
+      border: 2px solid var(--ink);
+      font-weight: 600;
+    }
+
+    /* Submit form */
+    .submit-section {
+      border-bottom: 2px solid var(--ink);
+      padding: 3rem 0;
+    }
+    .submit-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: .75rem;
+      background-color: var(--ink);
+      color: var(--cream);
+      padding: .875rem 1.75rem;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      border: 2px solid var(--ink);
+      transition: background-color .15s;
+    }
+    .submit-toggle:hover { background-color: var(--tomato); border-color: var(--tomato); }
+
+    .recipe-form-wrap {
+      display: none;
+      margin-top: 2rem;
+      border: 2px solid var(--ink);
+      padding: 2rem;
+      background-color: rgba(0,0,0,.01);
+    }
+    .recipe-form-wrap.open { display: block; }
+    .form-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.875rem;
+      letter-spacing: -0.025em;
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 1rem;
+    }
+    .form-grid {
+      display: grid;
+      gap: 1.25rem;
+    }
+    @media (min-width: 768px) { .form-grid-2 { grid-template-columns: repeat(2, 1fr); } }
+    .form-field { display: flex; flex-direction: column; gap: .4rem; }
+    .form-label {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .form-label span { color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: .75rem; }
+    .form-input {
+      border: 2px solid var(--ink);
+      padding: .625rem .875rem;
+      background-color: var(--cream);
+      font-size: .9375rem;
+      width: 100%;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .form-input:focus { border-color: var(--tomato); }
+    .form-input::placeholder { color: rgba(0,0,0,.35); }
+    textarea.form-input { resize: vertical; min-height: 5rem; }
+    .ingredients-list { display: flex; flex-direction: column; gap: .5rem; }
+    .ingredient-row { display: flex; align-items: center; gap: .5rem; }
+    .ingredient-row .form-input { flex: 1; }
+    .ingredient-num {
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 1.25rem;
+    }
+    .form-tags { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .25rem; }
+    .tag-btn {
+      padding: .25rem .875rem;
+      border: 2px solid var(--ink);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      background-color: transparent;
+      transition: background-color .1s, color .1s;
+    }
+    .tag-btn.selected { background-color: var(--ink); color: var(--cream); }
+    .form-submit {
+      margin-top: 1.5rem;
+      background-color: var(--tomato);
+      color: var(--cream);
+      padding: .875rem 2rem;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      border: 2px solid var(--tomato);
+      transition: background-color .15s;
+      width: 100%;
+    }
+    .form-submit:hover { background-color: var(--ink); border-color: var(--ink); }
+    .form-cancel {
+      margin-top: .75rem;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      width: 100%;
+      padding: .5rem;
+      text-align: center;
+      transition: color .15s;
+    }
+    .form-cancel:hover { color: var(--ink); }
+
+    /* Recipe cards */
+    .board-section { padding: 3rem 0 5rem; }
+    .board-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 2.5rem;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 1rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .board-count {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 2.25rem;
+      letter-spacing: -0.025em;
+      line-height: 1;
+    }
+    .board-count-sub { font-size: .75rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-top: .25rem; }
+    .filter-bar { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .filter-btn {
+      padding: .25rem .875rem;
+      border: 2px solid var(--ink);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      background-color: transparent;
+      transition: background-color .1s, color .1s;
+    }
+    .filter-btn.active { background-color: var(--ink); color: var(--cream); }
+
+    .recipe-grid {
+      display: grid;
+      gap: 2rem;
+    }
+    @media (min-width: 640px) { .recipe-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1024px) { .recipe-grid { grid-template-columns: repeat(3, 1fr); } }
+
+    .recipe-card {
+      border-top: 4px solid var(--ink);
+      padding-top: 1.25rem;
+    }
+    .recipe-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: .75rem;
+      margin-bottom: .75rem;
+    }
+    .recipe-card-tag {
+      font-size: .625rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      background-color: var(--ochre);
+      color: var(--ink);
+      padding: .2rem .6rem;
+      border: 1px solid var(--ink);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .recipe-card-date { font-size: .75rem; color: var(--muted); white-space: nowrap; }
+    .recipe-card-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      font-size: 1.5rem;
+      line-height: 1.05;
+      margin-bottom: .75rem;
+    }
+    .recipe-card-serves {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .ingredients-label {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      border-bottom: 1px solid var(--ink);
+      padding-bottom: .375rem;
+      margin-bottom: .5rem;
+    }
+    .ingredients-ul {
+      display: flex;
+      flex-direction: column;
+      gap: .25rem;
+      margin-bottom: 1rem;
+    }
+    .ingredients-ul li {
+      font-size: .875rem;
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+    }
+    .ingredients-ul li::before {
+      content: "—";
+      color: var(--tomato);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .recipe-card-instructions {
+      font-size: .875rem;
+      color: rgba(0,0,0,.7);
+      line-height: 1.65;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 5rem 2rem;
+      border: 2px dashed rgba(0,0,0,.15);
+    }
+    .empty-state-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.875rem;
+      letter-spacing: -0.025em;
+      margin-bottom: .75rem;
+    }
+    .empty-state-body { color: var(--muted); font-size: .9375rem; }
+
+    /* ── FOOD SHARE PAGE ─────────────────────────────────────────── */
+    .foodshare-intro {
+      border-bottom: 2px solid var(--ink);
+      padding: 3rem 0 2.5rem;
+    }
+    .foodshare-two-col {
+      display: grid;
+      gap: 1.5rem;
+    }
+    @media (min-width: 768px) { .foodshare-two-col { grid-template-columns: 7fr 5fr; gap: 3rem; align-items: start; } }
+
+    .foodshare-guidelines {
+      border: 2px solid var(--ink);
+      padding: 1.5rem;
+    }
+    .foodshare-guidelines-title {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      padding-bottom: .75rem;
+      border-bottom: 2px solid var(--ink);
+    }
+    .guideline-item {
+      display: flex;
+      align-items: baseline;
+      gap: .625rem;
+      font-size: .875rem;
+      color: rgba(0,0,0,.8);
+      padding: .375rem 0;
+      border-bottom: 1px solid rgba(0,0,0,.08);
+      line-height: 1.5;
+    }
+    .guideline-item:last-child { border-bottom: none; }
+    .guideline-check { color: var(--tomato); font-weight: 700; flex-shrink: 0; }
+
+    /* Food share form */
+    .foodshare-submit-section {
+      border-bottom: 2px solid var(--ink);
+      padding: 3rem 0;
+    }
+
+    /* Contact section */
+    .contact-section {
+      border: 2px solid var(--ink);
+      padding: 1.25rem;
+      background-color: rgba(0,0,0,.02);
+    }
+    .contact-section-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-bottom: 1rem;
+      padding-bottom: .875rem;
+      border-bottom: 2px solid var(--ink);
+    }
+    .contact-section-title {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+    }
+    .contact-section-badge {
+      font-size: .625rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      padding: .2rem .625rem;
+      background-color: var(--tomato);
+      color: var(--cream);
+    }
+    .contact-privacy-note {
+      margin-top: .875rem;
+      display: flex;
+      align-items: flex-start;
+      gap: .5rem;
+      font-size: .75rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .contact-privacy-note svg { flex-shrink: 0; margin-top: .05rem; }
+
+    /* Expiry time badges on listing cards */
+    .expiry-badge {
+      font-size: .625rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      padding: .2rem .6rem;
+    }
+    .expiry-badge.fresh    { background-color: oklch(65% .15 145); color: #fff; }
+    .expiry-badge.warning  { background-color: var(--ochre); color: var(--ink); }
+    .expiry-badge.critical { background-color: var(--tomato); color: var(--cream); }
+    .expiry-badge.expired  { background-color: rgba(0,0,0,.15); color: var(--muted); }
+
+    /* Expired card state */
+    .listing-card.is-expired { opacity: .6; }
+    .listing-card.is-expired .listing-card-top { background-color: rgba(0,0,0,.4); }
+    .listing-card-status.expired { border-color: rgba(255,255,255,.3); opacity: .6; }
+
+    /* Flag button */
+    .btn-flag {
+      display: inline-flex;
+      align-items: center;
+      gap: .375rem;
+      padding: .5rem .875rem;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      border: 2px solid rgba(0,0,0,.15);
+      background-color: transparent;
+      color: var(--muted);
+      transition: border-color .15s, color .15s;
+      white-space: nowrap;
+    }
+    .btn-flag:hover { border-color: var(--tomato); color: var(--tomato); }
+    .btn-flag.already-flagged { border-color: rgba(0,0,0,.1); color: rgba(0,0,0,.25); cursor: default; }
+
+    /* Inline flag confirmation panel */
+    .flag-confirm {
+      display: none;
+      padding: .875rem 1.25rem;
+      border-top: 1px solid rgba(0,0,0,.1);
+      background-color: oklch(97% .012 60);
+    }
+    .flag-confirm.open { display: block; }
+    .flag-confirm-text {
+      font-size: .8125rem;
+      font-weight: 600;
+      margin-bottom: .75rem;
+      display: flex;
+      align-items: flex-start;
+      gap: .5rem;
+      line-height: 1.4;
+    }
+    .flag-confirm-text svg { flex-shrink: 0; color: var(--tomato); margin-top: .05rem; }
+    .flag-confirm-sub {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-bottom: .875rem;
+      line-height: 1.5;
+    }
+    .flag-confirm-actions { display: flex; gap: .5rem; }
+    .btn-flag-confirm {
+      flex: 1;
+      padding: .5rem;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      background-color: var(--tomato);
+      color: var(--cream);
+      border: 2px solid var(--tomato);
+      transition: background-color .15s;
+    }
+    .btn-flag-confirm:hover { background-color: oklch(55% .21 28); border-color: oklch(55% .21 28); }
+    .btn-flag-cancel {
+      padding: .5rem 1rem;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      background-color: transparent;
+      color: var(--muted);
+      border: 2px solid rgba(0,0,0,.15);
+      transition: color .15s, border-color .15s;
+    }
+    .btn-flag-cancel:hover { color: var(--ink); border-color: var(--ink); }
+
+    /* Food safety warning banner on flagged cards */
+    .flag-warning {
+      display: flex;
+      align-items: flex-start;
+      gap: .625rem;
+      padding: .75rem 1.25rem;
+      border-top: 2px solid var(--tomato);
+      background-color: oklch(97% .025 28);
+      font-size: .8rem;
+      color: var(--ink);
+      line-height: 1.5;
+    }
+    .flag-warning svg { flex-shrink: 0; color: var(--tomato); margin-top: .1rem; }
+    .flag-warning strong { color: var(--tomato); }
+    .flag-count-badge {
+      font-size: .625rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      background-color: var(--tomato);
+      color: var(--cream);
+      padding: .15rem .5rem;
+      margin-left: .375rem;
+      vertical-align: middle;
+    }
+
+    /* Removed card — 3+ flags */
+    .listing-card.is-flagged-removed .listing-card-body { display: none; }
+    .listing-card.is-flagged-removed .listing-card-actions { display: none; }
+    .listing-card.is-flagged-removed .flag-confirm { display: none !important; }
+    .flagged-removed-body {
+      padding: 1.25rem;
+      text-align: center;
+    }
+    .flagged-removed-icon {
+      width: 2.5rem; height: 2.5rem;
+      margin: 0 auto .75rem;
+      color: var(--tomato);
+    }
+    .flagged-removed-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.125rem;
+      letter-spacing: -0.025em;
+      margin-bottom: .5rem;
+      color: var(--tomato);
+    }
+    .flagged-removed-body-text {
+      font-size: .8125rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    /* ── Safety checklist (condition-gated) ─────────────────────── */
+    .safety-checklist {
+      display: none;
+      border: 2px solid var(--tomato);
+      padding: 1.25rem;
+      background-color: oklch(97% .025 28);
+    }
+    .safety-checklist.visible { display: block; }
+    .safety-checklist-title {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      color: var(--tomato);
+      margin-bottom: .875rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .safety-check-item {
+      display: flex;
+      align-items: flex-start;
+      gap: .75rem;
+      padding: .5rem 0;
+      border-bottom: 1px solid rgba(180,40,40,.12);
+      cursor: pointer;
+    }
+    .safety-check-item:last-child { border-bottom: none; }
+    .safety-check-item input[type="checkbox"] {
+      width: 1.1rem;
+      height: 1.1rem;
+      flex-shrink: 0;
+      margin-top: .1rem;
+      accent-color: var(--tomato);
+      cursor: pointer;
+    }
+    .safety-check-item label {
+      font-size: .875rem;
+      line-height: 1.5;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .safety-checklist-note {
+      margin-top: .875rem;
+      font-size: .75rem;
+      color: var(--tomato);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    /* ── Allergen field ──────────────────────────────────────────── */
+    .allergen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+      gap: .5rem;
+      margin-top: .375rem;
+    }
+    .allergen-item {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .5rem .75rem;
+      border: 2px solid var(--ink);
+      font-size: .8125rem;
+      cursor: pointer;
+      transition: background-color .1s;
+    }
+    .allergen-item:has(input:checked) { background-color: var(--ink); color: var(--cream); }
+    .allergen-item input[type="checkbox"] {
+      width: .9rem; height: .9rem;
+      flex-shrink: 0;
+      accent-color: var(--cream);
+      cursor: pointer;
+    }
+    .allergen-item label { cursor: pointer; line-height: 1.2; }
+    .allergen-none-item {
+      border-color: rgba(0,0,0,.25);
+      color: var(--muted);
+    }
+    .allergen-none-item:has(input:checked) { background-color: rgba(0,0,0,.06); color: var(--ink); }
+
+    /* Allergen display on cards */
+    .allergen-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .3rem;
+      margin-top: .375rem;
+    }
+    .allergen-tag {
+      font-size: .6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: .15rem .5rem;
+      background-color: var(--ink);
+      color: var(--cream);
+    }
+    .allergen-tag.none-tag {
+      background-color: oklch(65% .15 145);
+    }
+
+    /* ── Keyword block error ─────────────────────────────────────── */
+    .keyword-block {
+      display: none;
+      border: 2px solid var(--tomato);
+      padding: 1.25rem;
+      background-color: oklch(97% .025 28);
+      margin-top: .75rem;
+    }
+    .keyword-block.visible { display: block; }
+    .keyword-block-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.125rem;
+      letter-spacing: -0.025em;
+      color: var(--tomato);
+      margin-bottom: .5rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .keyword-block-body { font-size: .875rem; color: var(--ink); line-height: 1.6; }
+    .keyword-block-body strong { color: var(--tomato); }
+
+    /* ── Food safety tips panel ──────────────────────────────────── */
+    .tips-accordion {
+      border: 2px solid var(--ink);
+      margin-bottom: 2rem;
+    }
+    .tips-accordion-toggle {
+      width: 100%;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      background: none;
+      text-align: left;
+      border: none;
+      cursor: pointer;
+      transition: background-color .15s;
+    }
+    .tips-accordion-toggle:hover { background-color: rgba(0,0,0,.03); }
+    .tips-accordion-label {
+      display: flex;
+      align-items: center;
+      gap: .625rem;
+      font-size: .8125rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .tips-accordion-label svg { color: var(--tomato); flex-shrink: 0; }
+    .tips-accordion-chevron {
+      width: 1rem; height: 1rem;
+      transition: transform .2s;
+      flex-shrink: 0;
+      color: var(--muted);
+    }
+    .tips-accordion.open .tips-accordion-chevron { transform: rotate(180deg); }
+    .tips-accordion-body {
+      display: none;
+      padding: 0 1.25rem 1.25rem;
+      border-top: 2px solid var(--ink);
+    }
+    .tips-accordion.open .tips-accordion-body { display: block; }
+    .tips-grid {
+      display: grid;
+      gap: 1.25rem;
+      margin-top: 1.25rem;
+    }
+    @media (min-width: 768px) { .tips-grid { grid-template-columns: repeat(2, 1fr); } }
+    .tip-block { border-left: 3px solid var(--tomato); padding-left: .875rem; }
+    .tip-block-title {
+      font-size: .75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: .375rem;
+      color: var(--tomato);
+    }
+    .tip-block-body { font-size: .8125rem; line-height: 1.6; color: rgba(0,0,0,.75); }
+    .tip-block-body strong { color: var(--ink); }
+
+    /* 2-hour caution badge on prepared listing cards */
+    .expiry-badge.caution {
+      background-color: oklch(55% .17 55);
+      color: #fff;
+    }
+
+    /* Listing cards */
+    .listing-grid {
+      display: grid;
+      gap: 1.75rem;
+      padding: 3rem 0 5rem;
+    }
+    @media (min-width: 640px) { .listing-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1024px) { .listing-grid { grid-template-columns: repeat(3, 1fr); } }
+
+    .listing-card {
+      border: 2px solid var(--ink);
+      overflow: hidden;
+    }
+    .listing-card-top {
+      background-color: var(--ink);
+      color: var(--cream);
+      padding: .875rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .listing-card-type {
+      font-size: .625rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      opacity: .7;
+    }
+    .listing-card-status {
+      font-size: .625rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+      padding: .2rem .6rem;
+      border: 1px solid var(--cream);
+    }
+    .listing-card-status.available { border-color: var(--ochre); color: var(--ochre); }
+    .listing-card-status.claimed { border-color: rgba(255,255,255,.4); opacity: .5; }
+    .listing-card-body { padding: 1.25rem; }
+    .listing-card-items {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.375rem;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+      margin-bottom: .625rem;
+    }
+    .listing-card-qty {
+      font-size: .875rem;
+      color: rgba(0,0,0,.7);
+      margin-bottom: .875rem;
+    }
+    .listing-meta {
+      display: flex;
+      flex-direction: column;
+      gap: .375rem;
+      padding-top: .875rem;
+      border-top: 1px solid rgba(0,0,0,.1);
+    }
+    .listing-meta-row {
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+      font-size: .8125rem;
+    }
+    .listing-meta-key {
+      font-size: .625rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 4.5rem;
+      flex-shrink: 0;
+    }
+    .listing-meta-val { color: rgba(0,0,0,.8); }
+    .listing-card-actions {
+      padding: .875rem 1.25rem;
+      border-top: 1px solid rgba(0,0,0,.1);
+      display: flex;
+      gap: .5rem;
+    }
+    .btn-claim {
+      flex: 1;
+      padding: .5rem;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      border: 2px solid var(--ink);
+      background-color: var(--ink);
+      color: var(--cream);
+      transition: background-color .15s;
+    }
+    .btn-claim:hover { background-color: var(--tomato); border-color: var(--tomato); }
+    .btn-claim:disabled {
+      background-color: transparent;
+      color: var(--muted);
+      border-color: rgba(0,0,0,.2);
+      cursor: default;
+    }
+    .btn-unclaim {
+      flex: 1;
+      padding: .5rem;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      border: 2px solid rgba(0,0,0,.2);
+      background-color: transparent;
+      color: var(--muted);
+      transition: all .15s;
+    }
+    .btn-unclaim:hover { border-color: var(--ink); color: var(--ink); }
+
+    /* ── Shared notice banner ────────────────────────────────────── */
+    .notice-band {
+      border-bottom: 2px solid var(--ink);
+      background-color: var(--ochre);
+    }
+    .notice-band .container {
+      padding-top: 1rem;
+      padding-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 600;
+    }
+
+    /* ── Location permission banner ──────────────────────────────── */
+    .loc-banner {
+      border-bottom: 2px solid var(--ink);
+      background-color: var(--ink);
+      color: var(--cream);
+    }
+    .loc-banner .container {
+      padding-top: 1.25rem;
+      padding-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .loc-banner-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      flex-shrink: 0;
+      color: var(--tomato);
+    }
+    .loc-banner-text { flex: 1; min-width: 0; }
+    .loc-banner-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.125rem;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+      margin-bottom: .25rem;
+    }
+    .loc-banner-body { font-size: .8125rem; opacity: .75; line-height: 1.5; }
+    .loc-banner-actions { display: flex; gap: .625rem; flex-shrink: 0; flex-wrap: wrap; }
+    .btn-loc-allow {
+      padding: .625rem 1.375rem;
+      background-color: var(--tomato);
+      color: var(--cream);
+      border: 2px solid var(--tomato);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      transition: background-color .15s;
+      white-space: nowrap;
+    }
+    .btn-loc-allow:hover { background-color: oklch(55% .21 28); border-color: oklch(55% .21 28); }
+    .btn-loc-deny {
+      padding: .625rem 1.125rem;
+      background-color: transparent;
+      color: var(--cream);
+      border: 2px solid rgba(255,255,255,.3);
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      transition: border-color .15s;
+      white-space: nowrap;
+      opacity: .8;
+    }
+    .btn-loc-deny:hover { border-color: rgba(255,255,255,.65); opacity: 1; }
+
+    /* Location status chip in board header */
+    .loc-status {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      padding: .25rem .75rem;
+      border: 2px solid var(--ink);
+      background-color: var(--cream);
+      color: var(--ink);
+      cursor: pointer;
+      transition: background-color .15s;
+    }
+    .loc-status:hover { background-color: rgba(0,0,0,.05); }
+    .loc-status.active { background-color: var(--ink); color: var(--cream); }
+    .loc-dot {
+      width: .5rem; height: .5rem;
+      border-radius: 50%;
+      background-color: var(--tomato);
+      flex-shrink: 0;
+    }
+
+    /* Distance badge on listing cards */
+    .listing-distance {
+      font-size: .625rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 600;
+      color: var(--cream);
+      background-color: var(--tomato);
+      padding: .2rem .6rem;
+      border: none;
+    }
+
+    /* ── Icons (inline SVG) ──────────────────────────────────────── */
+    .icon { display: inline-block; width: 1em; height: 1em; vertical-align: middle; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ── Responsive nav overflow ─────────────────────────────────── */
+    @media (max-width: 600px) {
+      .site-nav { gap: .75rem; font-size: .65rem; }
+    }
+
+    /* ── Animations ──────────────────────────────────────────────── */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .page.active { animation: fadeIn .2s ease; }
+  </style>
+</head>
+<body class="grain">
+
+<!-- ════════════════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════════════ -->
+<header class="site-header">
+  <div class="container">
+    <div class="logo" onclick="navigate('home')">
+      <span class="logo-name">NOURISH</span>
+      <span class="logo-tagline">/ no waste kitchen</span>
+    </div>
+    <nav class="site-nav" aria-label="Main navigation">
+      <button onclick="navigate('home')" data-page="home" class="active">Home</button>
+      <button onclick="navigate('scan')" data-page="scan">Scan</button>
+      <button onclick="navigate('recipes')" data-page="recipes" class="nav-gated" title="Member content">Recipes</button>
+      <button onclick="navigate('foodshare')" data-page="foodshare" class="nav-foodshare nav-gated" title="Member content">Food Share</button>
+      <button onclick="navigate('about')" data-page="about" class="nav-manifesto">Manifesto</button>
+    </nav>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════════════════════════════
+     HOME PAGE
+════════════════════════════════════════════════════════════════ -->
+<main id="page-home" class="page active">
+
+  <section class="border-b" style="border-bottom:2px solid var(--ink)">
+    <div class="container">
+      <div class="hero-kicker">
+        <span>Vol. 01 — Issue No. 1</span>
+        <span>The Anti-Waste Kitchen</span>
+      </div>
+    </div>
+    <div class="container">
+      <div class="hero-grid">
+        <div>
+          <h1 class="hero-h1">
+            Cook<br>
+            <span class="accent">what you</span><br>
+            <span class="italic">already have.</span>
+          </h1>
+          <p class="hero-body">Snap a photo of your pantry, fridge, or grocery cart. Our AI identifies every ingredient and writes recipes that fight waste, stretch your budget, and feed your household well.</p>
+          <div class="hero-ctas">
+            <button class="btn-primary" onclick="navigate('scan')">
+              <svg class="icon" style="width:1rem;height:1rem" viewBox="0 0 24 24"><path d="M14 4h2a2 2 0 0 1 2 2v1"/><path d="M14 4h-4"/><path d="M6 4H4a2 2 0 0 0-2 2v1"/><path d="M2 12v1a2 2 0 0 0 2 2h1"/><path d="M20 12v1a2 2 0 0 1-2 2h-1"/><path d="M9 8h6"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
+              Scan your pantry
+              <svg class="icon" style="width:1rem;height:1rem" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+            <button class="btn-ghost" onclick="navigate('about')">Read the manifesto</button>
+          </div>
+        </div>
+        <div class="hero-img-wrap">
+          <img
+            src="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=800&q=80"
+            alt="Overhead flat lay of rescued vegetables, jars of grains, herbs, onions, and a heel of bread"
+            width="800" height="1000"
+          >
+          <div class="hero-badge">Bruised. Wrinkled. Edible.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats-band">
+    <div class="container">
+      <div class="stats-grid">
+        <div><div class="stat-n">1.05B</div><div class="stat-l">Tons of food wasted yearly</div></div>
+        <div><div class="stat-n">733M</div><div class="stat-l">People facing hunger</div></div>
+        <div><div class="stat-n">30%</div><div class="stat-l">Of all food produced — lost</div></div>
+        <div><div class="stat-n">$1,500</div><div class="stat-l">Avg. household food thrown out</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="method-section">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-title">The method.</h2>
+        <span class="section-num">§ 01</span>
+      </div>
+      <div class="method-grid">
+        <article class="method-card">
+          <div class="method-num">01</div>
+          <svg class="method-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h2a2 2 0 0 1 2 2v1"/><path d="M14 4h-4"/><path d="M6 4H4a2 2 0 0 0-2 2v1"/><path d="M2 12v1a2 2 0 0 0 2 2h1"/><path d="M20 12v1a2 2 0 0 1-2 2h-1"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
+          <h3 class="method-title">Photograph</h3>
+          <p class="method-desc">One photo of your pantry, fridge shelf, or grocery haul. AI catalogs everything visible.</p>
+        </article>
+        <article class="method-card">
+          <div class="method-num">02</div>
+          <svg class="method-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+          <h3 class="method-title">Prioritize</h3>
+          <p class="method-desc">We flag what's likeliest to spoil first — so nothing rots forgotten in the back.</p>
+        </article>
+        <article class="method-card">
+          <div class="method-num">03</div>
+          <svg class="method-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 14h2a2 2 0 0 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 16"/><path d="m14.45 13.39 5.05-4.694C20.196 8 21 6.85 21 5.75a2.75 2.75 0 0 0-4.797-1.837.276.276 0 0 1-.406 0A2.75 2.75 0 0 0 11 5.75c0 1.2.802 2.248 1.5 2.946L16 11.95"/><path d="m2 15 6 6"/><path d="m7 20 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a1 1 0 0 0-2.75-2.91"/></svg>
+          <h3 class="method-title">Feed well</h3>
+          <p class="method-desc">Three recipes, each paired with a food security tip — stretching, preserving, donating.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="container">
+      <h2 class="cta-h2">Your next meal is already in your kitchen.</h2>
+      <button class="btn-invert" onclick="navigate('scan')">
+        Start scanning
+        <svg class="icon" style="width:1rem;height:1rem" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand-name">NOURISH</div>
+          <p class="footer-brand-desc">An editorial AI kitchen for the era of food insecurity. Cook what you have. Waste nothing.</p>
+        </div>
+        <div>
+          <div class="footer-col-label">Find help</div>
+          <ul class="footer-links">
+            <li><a href="https://www.feedingamerica.org/find-your-local-foodbank" target="_blank" rel="noreferrer">Find a food bank</a></li>
+            <li><a href="https://www.fns.usda.gov/snap/recipient/eligibility" target="_blank" rel="noreferrer">SNAP eligibility</a></li>
+            <li><a href="https://www.wfp.org/" target="_blank" rel="noreferrer">World Food Programme</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-label">Issue</div>
+          <p class="footer-issue">One-third of all food produced is wasted while 733 million people face hunger. Every meal cooked from scraps is a small act of repair.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container">© <span id="home-year"></span> Nourish — Cook with conscience.</div>
+    </div>
+  </footer>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCAN PAGE
+════════════════════════════════════════════════════════════════ -->
+<main id="page-scan" class="page">
+
+  <section class="scan-hero">
+    <div class="container">
+      <div class="scan-kicker">§ Pantry Scanner</div>
+      <h1 class="scan-title">Scan your<br><span class="accent">pantry.</span></h1>
+      <p class="scan-body">Photograph what you have — a shelf, a drawer, a grocery haul. Our AI reads every visible ingredient and generates recipes built around what's already in your kitchen.</p>
+
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" accept="image/*" id="pantry-upload" aria-label="Upload pantry photo">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        <div class="upload-label">Drop a photo here</div>
+        <div class="upload-sub">or click to browse — JPG, PNG, HEIC accepted</div>
+      </div>
+
+      <div class="scan-divider">or</div>
+
+      <div class="scan-type-field">
+        <label class="form-label" for="pantry-ingredients-input">Type what's in your kitchen <span>— comma-separated</span></label>
+        <input class="form-input" type="text" id="pantry-ingredients-input" placeholder="e.g. rice, canned tomatoes, onion, garlic" onkeydown="if(event.key==='Enter'){event.preventDefault();queueTypedIngredients();}">
+        <div class="scan-type-actions">
+          <button class="btn-primary" onclick="queueTypedIngredients()">Queue ingredients</button>
+          <span class="scan-type-confirm" id="scan-type-confirm"></span>
+        </div>
+      </div>
+
+      <div class="scan-note">
+        <strong>Note:</strong> The AI scanning feature connects to the Nourish backend. If you're running this locally or offline, the scan will queue and process once you're connected. In the meantime, browse community recipes on the <button onclick="navigate('recipes')" style="font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer">Recipe Board</button> or share surplus food on the <button onclick="navigate('foodshare')" style="font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer">Food Share</button> board.
+      </div>
+    </div>
+  </section>
+
+  <section class="scan-tips">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-title">Best results.</h2>
+        <span class="section-num">§ 02</span>
+      </div>
+      <div class="tips-grid">
+        <div class="tip-card">
+          <div class="tip-card-label">Lighting</div>
+          <div class="tip-card-title">Shoot in natural light</div>
+          <p class="tip-card-body">Overhead daylight helps AI read labels, distinguish produce, and identify grains. Avoid harsh shadows across items.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-card-label">Framing</div>
+          <div class="tip-card-title">Spread items out</div>
+          <p class="tip-card-body">Lay ingredients on a flat surface rather than photographing a crowded shelf. One clear flat-lay beats five cabinet shots.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-card-label">Focus</div>
+          <div class="tip-card-title">Include packaging text</div>
+          <p class="tip-card-body">Canned goods, pasta boxes, and spice jars read best when labels face the camera. Angle items toward the lens.</p>
+        </div>
+        <div class="tip-card">
+          <div class="tip-card-label">What to include</div>
+          <div class="tip-card-title">Photograph expiry-risk items first</div>
+          <p class="tip-card-body">Wilting greens, softening produce, and open packages should be front and center — Nourish prioritizes what needs to be used soonest.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand-name">NOURISH</div>
+          <p class="footer-brand-desc">An editorial AI kitchen for the era of food insecurity. Cook what you have. Waste nothing.</p>
+        </div>
+        <div>
+          <div class="footer-col-label">Find help</div>
+          <ul class="footer-links">
+            <li><a href="https://www.feedingamerica.org/find-your-local-foodbank" target="_blank" rel="noreferrer">Find a food bank</a></li>
+            <li><a href="https://www.fns.usda.gov/snap/recipient/eligibility" target="_blank" rel="noreferrer">SNAP eligibility</a></li>
+            <li><a href="https://www.wfp.org/" target="_blank" rel="noreferrer">World Food Programme</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-label">Issue</div>
+          <p class="footer-issue">One-third of all food produced is wasted while 733 million people face hunger. Every meal cooked from scraps is a small act of repair.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container">© <span class="footer-year"></span> Nourish — Cook with conscience.</div>
+    </div>
+  </footer>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════
+     RECIPE BOARD PAGE
+════════════════════════════════════════════════════════════════ -->
+<main id="page-recipes" class="page">
+
+  <div class="notice-band">
+    <div class="container">
+      <svg style="width:1rem;height:1rem;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      No accounts · No usernames · No likes · No comments — just recipes.
+    </div>
+  </div>
+
+  <section class="board-hero">
+    <div class="container">
+      <div class="board-kicker">§ Community Recipe Board</div>
+      <h1 class="board-title">5‑ingredient<br><span class="accent">recipes.</span></h1>
+      <p class="board-desc">A quiet bulletin board for simple, waste-conscious meals. Post a recipe, find one. No identity required — only ingredients.</p>
+      <div style="margin-top:1.25rem">
+        <span class="board-incognito-note">
+          <svg style="width:.875rem;height:.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 10a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a4 4 0 0 1-4 4 4 4 0 0 1-4-4V9"/><path d="M12 3v1"/></svg>
+          Anonymous — no profile, no username
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <div class="member-gate" id="recipes-gate">
+    <div class="container">
+      <div class="member-gate-card">
+        <div class="board-kicker">§ Membership</div>
+        <h2 class="member-gate-title">The board is member-supported.</h2>
+        <p class="member-gate-body">Scanning your kitchen and generating recipes stays free for every household, always. The Recipe Board — where neighbors post what's working in their own kitchens — is kept for Nourish members, a small way of keeping this space cared for.</p>
+        <div class="member-gate-actions">
+          <button class="btn-primary" onclick="joinMembership()">Become a member</button>
+          <button class="btn-ghost" onclick="navigate('scan')">Keep scanning instead</button>
+        </div>
+        <p class="member-gate-fine">Already a member? Membership carries over automatically once activated.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="recipes-gated-content" style="display:none">
+  <section class="submit-section">
+    <div class="container">
+      <button class="submit-toggle" id="recipe-form-toggle" onclick="toggleRecipeForm()">
+        <svg style="width:1rem;height:1rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Post a recipe
+      </button>
+
+      <div class="recipe-form-wrap" id="recipe-form-wrap">
+        <div class="form-title">Share a recipe</div>
+        <form id="recipe-form" onsubmit="submitRecipe(event)">
+          <div class="form-grid">
+
+            <div class="form-grid form-grid-2" style="grid-template-columns:1fr 1fr;gap:1rem">
+              <div class="form-field">
+                <label class="form-label" for="r-name">Recipe name</label>
+                <input class="form-input" id="r-name" type="text" placeholder="e.g. Pantry Tomato Rice" required maxlength="80">
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="r-serves">Serves <span>(optional)</span></label>
+                <input class="form-input" id="r-serves" type="text" placeholder="e.g. 2–3 people" maxlength="30">
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label">Ingredients <span>— up to 5</span></label>
+              <div class="ingredients-list" id="ingredients-list">
+                <div class="ingredient-row"><span class="ingredient-num">1.</span><input class="form-input" type="text" placeholder="e.g. 1 cup rice" maxlength="80" required></div>
+                <div class="ingredient-row"><span class="ingredient-num">2.</span><input class="form-input" type="text" placeholder="e.g. 1 can crushed tomatoes" maxlength="80"></div>
+                <div class="ingredient-row"><span class="ingredient-num">3.</span><input class="form-input" type="text" placeholder="e.g. 1 onion, diced" maxlength="80"></div>
+                <div class="ingredient-row"><span class="ingredient-num">4.</span><input class="form-input" type="text" placeholder="e.g. 2 cloves garlic" maxlength="80"></div>
+                <div class="ingredient-row"><span class="ingredient-num">5.</span><input class="form-input" type="text" placeholder="e.g. Salt &amp; olive oil" maxlength="80"></div>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label" for="r-instructions">How to make it</label>
+              <textarea class="form-input" id="r-instructions" placeholder="Brief steps — keep it practical. No need for chef's precision." rows="4" required maxlength="800"></textarea>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label">Dietary tags <span>(optional)</span></label>
+              <div class="form-tags" id="dietary-tags">
+                <button type="button" class="tag-btn" data-tag="Vegan" onclick="toggleTag(this)">Vegan</button>
+                <button type="button" class="tag-btn" data-tag="Vegetarian" onclick="toggleTag(this)">Vegetarian</button>
+                <button type="button" class="tag-btn" data-tag="Gluten-free" onclick="toggleTag(this)">Gluten-free</button>
+                <button type="button" class="tag-btn" data-tag="Dairy-free" onclick="toggleTag(this)">Dairy-free</button>
+                <button type="button" class="tag-btn" data-tag="High-protein" onclick="toggleTag(this)">High-protein</button>
+                <button type="button" class="tag-btn" data-tag="Budget" onclick="toggleTag(this)">Budget</button>
+                <button type="button" class="tag-btn" data-tag="Kid-friendly" onclick="toggleTag(this)">Kid-friendly</button>
+                <button type="button" class="tag-btn" data-tag="One-pot" onclick="toggleTag(this)">One-pot</button>
+              </div>
+            </div>
+
+          </div>
+
+          <button type="submit" class="form-submit">Post to the board — anonymously</button>
+          <button type="button" class="form-cancel" onclick="toggleRecipeForm()">Cancel</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="board-section">
+    <div class="container">
+      <div class="board-meta">
+        <div>
+          <div class="board-count" id="recipe-count">0</div>
+          <div class="board-count-sub">recipes shared</div>
+        </div>
+        <div class="filter-bar" id="recipe-filters">
+          <button class="filter-btn active" data-filter="All" onclick="filterRecipes(this)">All</button>
+          <button class="filter-btn" data-filter="Vegan" onclick="filterRecipes(this)">Vegan</button>
+          <button class="filter-btn" data-filter="Vegetarian" onclick="filterRecipes(this)">Vegetarian</button>
+          <button class="filter-btn" data-filter="Budget" onclick="filterRecipes(this)">Budget</button>
+          <button class="filter-btn" data-filter="One-pot" onclick="filterRecipes(this)">One-pot</button>
+          <button class="filter-btn" data-filter="Kid-friendly" onclick="filterRecipes(this)">Kid-friendly</button>
+        </div>
+      </div>
+      <div class="recipe-grid" id="recipe-grid"></div>
+      <div class="empty-state" id="recipe-empty" style="display:none">
+        <div class="empty-state-title">The board is quiet.</div>
+        <p class="empty-state-body">Be the first to share a recipe. No account needed — just good food.</p>
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand-name">NOURISH</div>
+          <p class="footer-brand-desc">An editorial AI kitchen for the era of food insecurity. Cook what you have. Waste nothing.</p>
+        </div>
+        <div>
+          <div class="footer-col-label">Find help</div>
+          <ul class="footer-links">
+            <li><a href="https://www.feedingamerica.org/find-your-local-foodbank" target="_blank" rel="noreferrer">Find a food bank</a></li>
+            <li><a href="https://www.fns.usda.gov/snap/recipient/eligibility" target="_blank" rel="noreferrer">SNAP eligibility</a></li>
+            <li><a href="https://www.wfp.org/" target="_blank" rel="noreferrer">World Food Programme</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-label">Issue</div>
+          <p class="footer-issue">One-third of all food produced is wasted while 733 million people face hunger. Every meal cooked from scraps is a small act of repair.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container">© <span class="footer-year"></span> Nourish — Cook with conscience.</div>
+    </div>
+  </footer>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════
+     FOOD SHARE PAGE
+════════════════════════════════════════════════════════════════ -->
+<main id="page-foodshare" class="page">
+
+  <div class="notice-band">
+    <div class="container">
+      <svg style="width:1rem;height:1rem;flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      No accounts · No usernames · No profiles — share food, not data.
+    </div>
+  </div>
+
+  <!-- Location permission banner — shown until user decides -->
+  <div class="loc-banner" id="loc-banner">
+    <div class="container">
+      <svg class="loc-banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+        <circle cx="12" cy="10" r="3"/>
+      </svg>
+      <div class="loc-banner-text">
+        <div class="loc-banner-title">See food near you.</div>
+        <div class="loc-banner-body">Enable location to sort listings by distance and auto-fill your neighborhood when posting. Your exact coordinates are never stored or shared.</div>
+      </div>
+      <div class="loc-banner-actions">
+        <button class="btn-loc-allow" onclick="requestLocation()">Enable location</button>
+        <button class="btn-loc-deny"  onclick="dismissLocBanner()">Not now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Location active status bar — shown after location is granted -->
+  <div id="loc-active-bar" style="display:none;border-bottom:2px solid var(--ink);background-color:var(--cream)">
+    <div class="container" style="padding-top:.75rem;padding-bottom:.75rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:.625rem;font-size:.8125rem">
+        <svg style="width:1rem;height:1rem;color:var(--tomato);flex-shrink:0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span>Showing listings near <strong id="loc-label">your location</strong></span>
+      </div>
+      <button onclick="clearLocation()" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-decoration:underline;text-underline-offset:3px">Turn off location</button>
+    </div>
+  </div>
+
+  <section class="foodshare-intro">
+    <div class="container">
+      <div class="board-kicker">§ Local Food Share</div>
+      <div class="foodshare-two-col">
+        <div>
+          <h1 class="board-title">Give food.<br><span class="accent">Not waste.</span></h1>
+          <p class="board-desc" style="margin-top:1.25rem">Have leftover produce, unopened pantry items, or surplus from a big cook? Post it here. Someone nearby can use it. No accounts, no transactions — just neighbors feeding neighbors.</p>
+          <p class="board-desc" style="margin-top:.75rem">Perishable listings expire automatically — cooked meals after 4 hours, ripe produce after 8–48 hours depending on condition. Pantry and frozen items stay active for 7 days. Mark yours as claimed once it's picked up.</p>
+          <span class="board-incognito-note" style="margin-top:1.25rem;display:inline-flex">
+            <svg style="width:.875rem;height:.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9 10a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a4 4 0 0 1-4 4 4 4 0 0 1-4-4V9"/><path d="M12 3v1"/></svg>
+            No accounts or profiles — contact details are visible to all visitors
+          </span>
+        </div>
+        <div class="foodshare-guidelines">
+          <div class="foodshare-guidelines-title">What's welcome here</div>
+          <div class="guideline-item"><span class="guideline-check">✓</span> Surplus fresh produce (clearly state condition)</div>
+          <div class="guideline-item"><span class="guideline-check">✓</span> Unopened, unexpired packaged food</div>
+          <div class="guideline-item"><span class="guideline-check">✓</span> Prepared / cooked meals (same-day only)</div>
+          <div class="guideline-item"><span class="guideline-check">✓</span> Home-grown herbs, vegetables, fruit</div>
+          <div class="guideline-item"><span class="guideline-check">✓</span> Baked goods (clearly label ingredients)</div>
+          <div class="guideline-item" style="color:rgba(0,0,0,.45)"><span style="color:rgba(0,0,0,.25);font-weight:700">✗</span> Expired, spoiled, or unsafe items</div>
+          <div class="guideline-item" style="color:rgba(0,0,0,.45)"><span style="color:rgba(0,0,0,.25);font-weight:700">✗</span> Alcohol or non-food items</div>
+          <div class="guideline-item" style="color:rgba(0,0,0,.45)"><span style="color:rgba(0,0,0,.25);font-weight:700">✗</span> Requests for payment or trade</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="member-gate" id="foodshare-gate">
+    <div class="container">
+      <div class="member-gate-card">
+        <div class="board-kicker">§ Membership</div>
+        <h2 class="member-gate-title">The network runs on membership.</h2>
+        <p class="member-gate-body">Scanning your kitchen and generating recipes stays free for every household, always. The Food Share network — posting and claiming what neighbors have to give — is kept for Nourish members, a small way of keeping trades trustworthy.</p>
+        <div class="member-gate-actions">
+          <button class="btn-primary" onclick="joinMembership()">Become a member</button>
+          <button class="btn-ghost" onclick="navigate('scan')">Keep scanning instead</button>
+        </div>
+        <p class="member-gate-fine">Already a member? Membership carries over automatically once activated.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="foodshare-gated-content" style="display:none">
+  <section class="foodshare-submit-section">
+    <div class="container">
+      <!-- Food safety tips accordion -->
+      <div class="tips-accordion" id="safety-tips-accordion">
+        <button type="button" class="tips-accordion-toggle" onclick="toggleSafetyTips()">
+          <span class="tips-accordion-label">
+            <svg style="width:1rem;height:1rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Food Safety Reference — before you post
+          </span>
+          <svg class="tips-accordion-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="tips-accordion-body">
+          <div class="tips-grid">
+            <div class="tip-block">
+              <div class="tip-block-title">The Temperature Danger Zone</div>
+              <p class="tip-block-body">Bacteria multiply rapidly between <strong>40°F – 140°F (4°C – 60°C)</strong>. Keep cold food cold and hot food hot. Never share food that has spent extended time in this range.</p>
+            </div>
+            <div class="tip-block">
+              <div class="tip-block-title">The 2-Hour Rule</div>
+              <p class="tip-block-body">Cooked or perishable food left at room temperature for <strong>more than 2 hours</strong> should not be shared. In hot weather above 90°F, that window drops to <strong>1 hour</strong>.</p>
+            </div>
+            <div class="tip-block">
+              <div class="tip-block-title">Assessing Produce</div>
+              <p class="tip-block-body">Surface blemishes and bruising are fine — that's what we're here for. Do not share produce with <strong>visible mold, strong fermented odor, or broken skin with interior discoloration</strong>.</p>
+            </div>
+            <div class="tip-block">
+              <div class="tip-block-title">Cooked & Prepared Food</div>
+              <p class="tip-block-body">Share same-day only. Food must have been <strong>stored covered</strong> and kept out of the danger zone. Label clearly: what it is, when it was made, and any allergens present.</p>
+            </div>
+            <div class="tip-block">
+              <div class="tip-block-title">Mold — Zero Tolerance</div>
+              <p class="tip-block-body">Visible mold means the entire item is unsafe — mold roots penetrate far beyond the surface. <strong>Do not cut off the moldy part and share the rest.</strong> This applies to bread, soft produce, and cooked food.</p>
+            </div>
+            <div class="tip-block">
+              <div class="tip-block-title">Packaging Integrity</div>
+              <p class="tip-block-body">Only share sealed packaged goods with <strong>intact packaging and a visible best-before date</strong> that has not passed. A dented or bulging can must not be shared.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="submit-toggle" id="share-form-toggle" onclick="toggleShareForm()">
+        <svg style="width:1rem;height:1rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Post food to share
+      </button>
+
+      <div class="recipe-form-wrap" id="share-form-wrap">
+        <div class="form-title">What are you sharing?</div>
+        <form id="share-form" onsubmit="submitShare(event)">
+          <div class="form-grid">
+
+            <div class="form-field">
+              <label class="form-label" for="s-items">Food item(s)</label>
+              <input class="form-input" id="s-items" type="text" placeholder="e.g. Zucchini, cherry tomatoes, basil" required maxlength="120">
+            </div>
+
+            <div class="form-grid form-grid-2" style="grid-template-columns:1fr 1fr;gap:1rem">
+              <div class="form-field">
+                <label class="form-label" for="s-qty">Quantity / amount</label>
+                <input class="form-input" id="s-qty" type="text" placeholder="e.g. ~2 lbs, 1 bag, 6 ears" maxlength="60" required>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="s-condition">Condition <span>— sets auto-expiry</span></label>
+                <select class="form-input" id="s-condition" required onchange="onConditionChange()">
+                  <option value="" disabled selected>Select condition</option>
+                  <option value="Cooked / prepared">Cooked / prepared — expires in 4 hrs</option>
+                  <option value="Use today — very ripe">Use today — very ripe — expires in 8 hrs</option>
+                  <option value="Good — use within 2 days">Good — use within 2 days — expires in 24 hrs</option>
+                  <option value="Fresh / excellent">Fresh / excellent — expires in 48 hrs</option>
+                  <option value="Frozen">Frozen — expires in 7 days</option>
+                  <option value="Sealed / unopened">Sealed / unopened — expires in 7 days</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-grid form-grid-2" style="grid-template-columns:1fr 1fr;gap:1rem">
+              <div class="form-field">
+                <label class="form-label" for="s-area">General area <span id="area-label-hint">— neighborhood or zip</span></label>
+                <input class="form-input" id="s-area" type="text" placeholder="e.g. East Side, 60614, or Uptown" maxlength="60" required>
+              </div>
+              <div class="form-field">
+                <label class="form-label" for="s-window">Pickup window</label>
+                <input class="form-input" id="s-window" type="text" placeholder="e.g. Today 3–6pm, Weekday mornings" maxlength="60" required>
+              </div>
+            </div>
+
+            <div class="contact-section">
+              <div class="contact-section-header">
+                <span class="contact-section-title">Contact for coordination</span>
+                <span class="contact-section-badge">Required</span>
+              </div>
+              <div class="form-grid form-grid-2" style="grid-template-columns:1fr 1fr;gap:1rem">
+                <div class="form-field">
+                  <label class="form-label" for="s-contact-method">Preferred method</label>
+                  <select class="form-input" id="s-contact-method" required onchange="updateContactRequirement()">
+                    <option value="" disabled selected>How should people reach you?</option>
+                    <option value="text">Text / SMS</option>
+                    <option value="email">Email</option>
+                    <option value="call">Phone call</option>
+                    <option value="signal">Signal or WhatsApp</option>
+                    <option value="inperson">Arrange at pickup — no contact needed</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div class="form-field" id="contact-details-wrap">
+                  <label class="form-label" for="s-contact">Contact details</label>
+                  <input class="form-input" id="s-contact" type="text" placeholder="e.g. 555-0100" maxlength="80" required>
+                </div>
+              </div>
+              <div class="contact-privacy-note">
+                <svg style="width:.875rem;height:.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                Your contact info is visible to all visitors of this page. Share only what you are comfortable with — a first name, a general handle, or simply "arrange at pickup" is fine.
+              </div>
+            </div>
+
+            <!-- Condition-gated safety checklist -->
+            <div class="safety-checklist" id="safety-checklist">
+              <div class="safety-checklist-title">
+                <svg style="width:.875rem;height:.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span id="checklist-title">Food safety confirmation required</span>
+              </div>
+              <div id="checklist-items"></div>
+              <div class="safety-checklist-note" id="checklist-note">All boxes must be checked before you can post.</div>
+            </div>
+
+            <!-- Allergen declaration -->
+            <div class="form-field">
+              <label class="form-label">Allergen declaration <span>— check all that apply, or select None</span></label>
+              <div class="allergen-grid" id="allergen-grid">
+                <label class="allergen-item allergen-none-item">
+                  <input type="checkbox" name="allergen" value="None" onchange="onAllergenNone(this)"> <span>None / Allergen-free</span>
+                </label>
+                <label class="allergen-item"><input type="checkbox" name="allergen" value="Milk" onchange="onAllergenItem(this)"> <span>Milk</span></label>
+                <label class="allergen-item"><input type="checkbox" name="allergen" value="Eggs" onchange="onAllergenItem(this)"> <span>Eggs</span></label>
+                <label class="allergen-item"><input type="checkbox" name="allergen" value="Fish" onchange="onAllergenItem(this)"> <span>Fish</span></label>
+                <label class="allergen-item"><input type="checkbox" name="allergen" value="Shellfish" onchange="onAllergenItem(this)"> <span>Shellfish</span></label>
+                <label class="allergen-item"><input type="checkbox" name="allergen" value="Tree Nuts" onchange="onAllergenItem(this)"> <span>Tree Nuts</span></label>
+                <label class="allergen-item"><input type="checkbox" name="allergen" value="Peanuts" onchange="onAllergenItem(this)"> <span>Peanuts</span></label>
+                <label class="allergen-item"><input type="checkbox" name="allergen" value="Wheat" onchange="onAllergenItem(this)"> <span>Wheat</span></label>
+                <label class="allergen-item"><input type="checkbox" name="allergen" value="Soy" onchange="onAllergenItem(this)"> <span>Soy</span></label>
+                <label class="allergen-item"><input type="checkbox" name="allergen" value="Sesame" onchange="onAllergenItem(this)"> <span>Sesame</span></label>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label" for="s-notes">Additional notes <span>(optional)</span></label>
+              <textarea class="form-input" id="s-notes" placeholder="Pickup instructions, storage tips, anything helpful." rows="3" maxlength="400"></textarea>
+            </div>
+
+            <!-- Keyword block error — shown inline, prevents submit -->
+            <div class="keyword-block" id="keyword-block">
+              <div class="keyword-block-title">
+                <svg style="width:1rem;height:1rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                This listing cannot be posted
+              </div>
+              <p class="keyword-block-body" id="keyword-block-msg"></p>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label">Category</label>
+              <div class="form-tags" id="share-tags">
+                <button type="button" class="tag-btn" data-tag="Produce" onclick="toggleShareTag(this)">Produce</button>
+                <button type="button" class="tag-btn" data-tag="Pantry" onclick="toggleShareTag(this)">Pantry</button>
+                <button type="button" class="tag-btn" data-tag="Baked goods" onclick="toggleShareTag(this)">Baked goods</button>
+                <button type="button" class="tag-btn" data-tag="Prepared meal" onclick="toggleShareTag(this)">Prepared meal</button>
+                <button type="button" class="tag-btn" data-tag="Herbs" onclick="toggleShareTag(this)">Herbs</button>
+                <button type="button" class="tag-btn" data-tag="Dairy" onclick="toggleShareTag(this)">Dairy</button>
+                <button type="button" class="tag-btn" data-tag="Frozen" onclick="toggleShareTag(this)">Frozen</button>
+                <button type="button" class="tag-btn" data-tag="Homegrown" onclick="toggleShareTag(this)">Homegrown</button>
+              </div>
+            </div>
+
+          </div>
+
+          <button type="submit" class="form-submit">Post listing — anonymously</button>
+          <button type="button" class="form-cancel" onclick="toggleShareForm()">Cancel</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding:0 0 5rem">
+    <div class="container">
+      <div class="board-meta" style="padding-top:2.5rem">
+        <div>
+          <div class="board-count" id="share-count">0</div>
+          <div class="board-count-sub">active listings</div>
+        </div>
+        <div class="filter-bar" id="share-filters">
+          <button class="filter-btn active" data-filter="All" onclick="filterShares(this)">All</button>
+          <button class="filter-btn" data-filter="__nearby__" id="filter-nearby" onclick="filterShares(this)" style="display:none">
+            <span style="display:inline-flex;align-items:center;gap:.375rem">
+              <svg style="width:.7rem;height:.7rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              Near me
+            </span>
+          </button>
+          <button class="filter-btn" data-filter="Produce" onclick="filterShares(this)">Produce</button>
+          <button class="filter-btn" data-filter="Pantry" onclick="filterShares(this)">Pantry</button>
+          <button class="filter-btn" data-filter="Baked goods" onclick="filterShares(this)">Baked goods</button>
+          <button class="filter-btn" data-filter="Prepared meal" onclick="filterShares(this)">Prepared meal</button>
+          <button class="filter-btn" data-filter="Homegrown" onclick="filterShares(this)">Homegrown</button>
+        </div>
+      </div>
+      <div class="listing-grid" id="share-grid"></div>
+      <div class="empty-state" id="share-empty" style="display:none">
+        <div class="empty-state-title">Nothing listed yet.</div>
+        <p class="empty-state-body">Have food to share? Post a listing above — it takes under a minute and no account is needed.</p>
+      </div>
+    </div>
+  </section>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand-name">NOURISH</div>
+          <p class="footer-brand-desc">An editorial AI kitchen for the era of food insecurity. Cook what you have. Waste nothing.</p>
+        </div>
+        <div>
+          <div class="footer-col-label">Find help</div>
+          <ul class="footer-links">
+            <li><a href="https://www.feedingamerica.org/find-your-local-foodbank" target="_blank" rel="noreferrer">Find a food bank</a></li>
+            <li><a href="https://www.fns.usda.gov/snap/recipient/eligibility" target="_blank" rel="noreferrer">SNAP eligibility</a></li>
+            <li><a href="https://www.wfp.org/" target="_blank" rel="noreferrer">World Food Programme</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-label">Issue</div>
+          <p class="footer-issue">One-third of all food produced is wasted while 733 million people face hunger. Every meal cooked from scraps is a small act of repair.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container">© <span class="footer-year"></span> Nourish — Cook with conscience.</div>
+    </div>
+  </footer>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════
+     MANIFESTO / ABOUT PAGE
+════════════════════════════════════════════════════════════════ -->
+<main id="page-about" class="page">
+
+  <article class="manifesto-article">
+    <div class="manifesto-kicker">Manifesto</div>
+    <h1 class="manifesto-title">Cook with <span class="accent">conscience.</span></h1>
+    <div class="manifesto-body">
+      <p class="manifesto-lede">One-third of the food produced on this planet is thrown away while 733 million people go hungry. We built Nourish to stand in that contradiction.</p>
+      <p>Most recipe apps ask: <em>what do you want to eat?</em> Nourish asks: <em>what do you already have?</em> Snap your pantry. We see it. We write recipes that use the bruised tomato, the wilting herb, the half-onion in cling film.</p>
+      <p>Every recipe ships with a <strong>food security tip</strong> — practical wisdom on stretching staples, preserving leftovers, finding community resources, and shopping with intention. Cooking is an everyday political act.</p>
+      <p>The Recipe Board and Food Share tools on this platform exist for the same reason: to move food toward mouths, not landfills. No accounts. No social graph. No metrics. A bulletin board is enough.</p>
+      <p class="manifesto-pull">"We do not need a kitchen of more. We need a kitchen of enough."</p>
+      <p>Waste is not inevitable. It is a design failure — in supply chains, in portion culture, in the assumption that abundance requires disposal. Nourish is a small correction.</p>
+    </div>
+    <button class="manifesto-cta" onclick="navigate('scan')">
+      Scan your pantry
+      <svg class="icon" style="width:1rem;height:1rem" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+    </button>
+  </article>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand-name">NOURISH</div>
+          <p class="footer-brand-desc">An editorial AI kitchen for the era of food insecurity. Cook what you have. Waste nothing.</p>
+        </div>
+        <div>
+          <div class="footer-col-label">Find help</div>
+          <ul class="footer-links">
+            <li><a href="https://www.feedingamerica.org/find-your-local-foodbank" target="_blank" rel="noreferrer">Find a food bank</a></li>
+            <li><a href="https://www.fns.usda.gov/snap/recipient/eligibility" target="_blank" rel="noreferrer">SNAP eligibility</a></li>
+            <li><a href="https://www.wfp.org/" target="_blank" rel="noreferrer">World Food Programme</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="footer-col-label">Issue</div>
+          <p class="footer-issue">One-third of all food produced is wasted while 733 million people face hunger. Every meal cooked from scraps is a small act of repair.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container">© <span class="footer-year"></span> Nourish — Cook with conscience.</div>
+    </div>
+  </footer>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════════════ -->
+<script>
+// ── State ────────────────────────────────────────────────────────
+const RECIPES_KEY   = 'nourish_recipes_v1';
+const SHARES_KEY    = 'nourish_shares_v2';   // bumped — schema changed
+const LOC_PREF_KEY  = 'nourish_loc_pref';
+const PANTRY_QUEUE_KEY = 'nourish_pantry_queue_v1';
+const SHARE_TTL_MS  = 7 * 24 * 60 * 60 * 1000;
+
+// Hours until a listing auto-expires based on the poster's condition selection
+const FLAG_THRESHOLD  = 3;    // flags before listing is hidden
+const SESSION_FLAGS_KEY = 'nourish_session_flags'; // sessionStorage — resets each visit
+
+const CONDITION_EXPIRY_HOURS = {
+  'Cooked / prepared':        4,   // tightened from 6h
+  'Use today — very ripe':    8,
+  'Good — use within 2 days': 24,
+  'Fresh / excellent':        48,
+  'Frozen':                   7 * 24,
+  'Sealed / unopened':        7 * 24,
+};
+
+let recipes        = [];
+let shares         = [];
+let activeRecipeFilter = 'All';
+let activeShareFilter  = 'All';
+
+// Location state (session-only — not persisted to localStorage)
+let userLat   = null;
+let userLng   = null;
+let userLabel = null;   // human-readable neighborhood from reverse geocoding
+
+// ── Init ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Set year in all footer spans
+  const yr = new Date().getFullYear();
+  document.querySelectorAll('.footer-year, #home-year').forEach(el => el.textContent = yr);
+
+  // Load data
+  recipes = loadRecipes();
+  shares  = loadShares();
+
+  // Seed demo data if empty
+  if (recipes.length === 0) seedRecipes();
+  if (shares.length === 0)  seedShares();
+
+  renderRecipes();
+  renderShares();
+
+  // Restore location preference from previous session
+  const locPref = localStorage.getItem(LOC_PREF_KEY);
+  if (locPref === 'granted') {
+    // Silently re-request — browser will grant immediately if permission persists
+    navigator.geolocation && navigator.geolocation.getCurrentPosition(
+      pos => applyLocation(pos.coords.latitude, pos.coords.longitude),
+      ()  => showLocBanner()   // permission revoked since last visit — show banner again
+    );
+  } else if (locPref === 'denied') {
+    hideLocBanner();           // user previously said "not now" — respect it
+  }
+  // else: first visit — banner shown by default (it's visible in HTML)
+
+  // Route from hash
+  const hash = location.hash.replace('#','') || 'home';
+  navigate(hash, false);
+});
+
+window.addEventListener('popstate', () => {
+  const hash = location.hash.replace('#','') || 'home';
+  navigate(hash, false);
+});
+
+// ── Membership (Recipe Board & Food Share are member-supported;
+//    Scan + recipe generation remain free for every household) ────
+const MEMBER_KEY = 'nourish_member_v1';
+
+function isMember() {
+  return localStorage.getItem(MEMBER_KEY) === '1';
+}
+
+function joinMembership() {
+  localStorage.setItem(MEMBER_KEY, '1');
+  applyMembershipGates();
+}
+
+function applyMembershipGates() {
+  const member = isMember();
+  ['recipes', 'foodshare'].forEach(page => {
+    const gate = document.getElementById(page + '-gate');
+    const content = document.getElementById(page + '-gated-content');
+    if (gate) gate.style.display = member ? 'none' : '';
+    if (content) content.style.display = member ? '' : 'none';
+  });
+}
+
+// ── Navigation ───────────────────────────────────────────────────
+function navigate(page, pushState = true) {
+  const valid = ['home','scan','recipes','foodshare','about'];
+  if (!valid.includes(page)) page = 'home';
+
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  const target = document.getElementById('page-' + page);
+  if (target) target.classList.add('active');
+
+  document.querySelectorAll('.site-nav button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.page === page);
+  });
+
+  applyMembershipGates();
+
+  if (pushState) history.pushState({}, '', '#' + page);
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+// ── Scan page ────────────────────────────────────────────────────
+function queueTypedIngredients() {
+  const input   = document.getElementById('pantry-ingredients-input');
+  const confirm = document.getElementById('scan-type-confirm');
+
+  const ingredients = input.value
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  if (ingredients.length === 0) {
+    confirm.textContent = 'Type at least one ingredient first.';
+    confirm.classList.remove('show');
+    return;
+  }
+
+  const queue = JSON.parse(localStorage.getItem(PANTRY_QUEUE_KEY) || '[]');
+  queue.push({ ingredients, queuedAt: new Date().toISOString() });
+  localStorage.setItem(PANTRY_QUEUE_KEY, JSON.stringify(queue));
+
+  confirm.textContent = `Queued ${ingredients.length} ingredient${ingredients.length === 1 ? '' : 's'} — will process once you're connected.`;
+  confirm.classList.add('show');
+  input.value = '';
+}
+
+// ── Location ─────────────────────────────────────────────────────
+function showLocBanner() {
+  document.getElementById('loc-banner').style.display = '';
+  document.getElementById('loc-active-bar').style.display = 'none';
+}
+
+function hideLocBanner() {
+  document.getElementById('loc-banner').style.display = 'none';
+}
+
+function dismissLocBanner() {
+  hideLocBanner();
+  localStorage.setItem(LOC_PREF_KEY, 'denied');
+}
+
+function requestLocation() {
+  if (!navigator.geolocation) {
+    alert('Your browser does not support location services.');
+    return;
+  }
+  // Optimistic UI — disable the button while resolving
+  const btn = document.querySelector('.btn-loc-allow');
+  if (btn) { btn.textContent = 'Locating…'; btn.disabled = true; }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      localStorage.setItem(LOC_PREF_KEY, 'granted');
+      applyLocation(pos.coords.latitude, pos.coords.longitude);
+    },
+    err => {
+      if (btn) { btn.textContent = 'Enable location'; btn.disabled = false; }
+      if (err.code === err.PERMISSION_DENIED) {
+        localStorage.setItem(LOC_PREF_KEY, 'denied');
+        dismissLocBanner();
+      }
+    },
+    { timeout: 8000, maximumAge: 300000 }
+  );
+}
+
+async function applyLocation(lat, lng) {
+  userLat = lat;
+  userLng = lng;
+
+  // Reverse geocode via Nominatim (OpenStreetMap — free, no key needed)
+  try {
+    const res  = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=14`,
+      { headers: { 'Accept-Language': 'en', 'User-Agent': 'Nourish/1.0 (food-security app; https://github.com/kalynmatth/NOURISH)' } }
+    );
+    const data = await res.json();
+    const addr = data.address || {};
+    // Use the most specific available label: suburb > neighbourhood > city_district > city > town
+    userLabel = addr.suburb || addr.neighbourhood || addr.city_district
+              || addr.city   || addr.town          || addr.county || 'your area';
+  } catch {
+    userLabel = 'your area';
+  }
+
+  hideLocBanner();
+
+  // Show active bar
+  const bar = document.getElementById('loc-active-bar');
+  bar.style.display = '';
+  const labelEl = document.getElementById('loc-label');
+  if (labelEl) labelEl.textContent = userLabel;
+
+  // Reveal "Near me" filter and auto-activate it
+  const nearBtn = document.getElementById('filter-nearby');
+  if (nearBtn) nearBtn.style.display = '';
+
+  // Auto-fill area field if the form is open
+  const areaInput = document.getElementById('s-area');
+  if (areaInput && !areaInput.value) {
+    areaInput.value = userLabel;
+    const hint = document.getElementById('area-label-hint');
+    if (hint) hint.textContent = '— filled from your location';
+  }
+
+  // Re-render with distances
+  renderShares();
+}
+
+function clearLocation() {
+  userLat = userLng = userLabel = null;
+  localStorage.setItem(LOC_PREF_KEY, 'denied');
+
+  document.getElementById('loc-active-bar').style.display = 'none';
+  showLocBanner();
+
+  const nearBtn = document.getElementById('filter-nearby');
+  if (nearBtn) nearBtn.style.display = 'none';
+
+  // Reset "Near me" filter back to All if active
+  if (activeShareFilter === '__nearby__') {
+    activeShareFilter = 'All';
+    document.querySelectorAll('#share-filters .filter-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.filter === 'All');
+    });
+  }
+
+  const hint = document.getElementById('area-label-hint');
+  if (hint) hint.textContent = '— neighborhood or zip';
+
+  renderShares();
+}
+
+// Haversine — returns distance in miles between two lat/lng points
+function haversine(lat1, lng1, lat2, lng2) {
+  [lat1, lng1, lat2, lng2] = [lat1, lng1, lat2, lng2].map(Number);
+  if ([lat1, lng1, lat2, lng2].some(n => !isFinite(n))) return null;
+  if (Math.abs(lat2) > 90 || Math.abs(lat1) > 90) return null;
+  const R    = 3958.8;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) ** 2
+          + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180)
+          * Math.sin(dLng/2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function fmtMiles(mi) {
+  if (mi < 0.1) return '< 0.1 mi';
+  if (mi < 10)  return mi.toFixed(1) + ' mi';
+  return Math.round(mi) + ' mi';
+}
+
+// ── Flag helpers ─────────────────────────────────────────────────
+function getSessionFlags() {
+  try { return JSON.parse(sessionStorage.getItem(SESSION_FLAGS_KEY) || '[]'); } catch { return []; }
+}
+function addSessionFlag(id) {
+  const flags = getSessionFlags();
+  if (!flags.includes(id)) flags.push(id);
+  sessionStorage.setItem(SESSION_FLAGS_KEY, JSON.stringify(flags));
+}
+function hasSessionFlag(id) {
+  return getSessionFlags().includes(id);
+}
+
+function flagShare(id) {
+  // Toggle the inline confirmation panel open — close any other open panels first
+  document.querySelectorAll('.flag-confirm.open').forEach(el => {
+    if (el.dataset.id !== id) el.classList.remove('open');
+  });
+  const panel = document.getElementById('flag-confirm-' + id);
+  if (panel) panel.classList.toggle('open');
+}
+
+function cancelFlag(id) {
+  const panel = document.getElementById('flag-confirm-' + id);
+  if (panel) panel.classList.remove('open');
+}
+
+function confirmFlag(id) {
+  if (hasSessionFlag(id)) return; // already flagged this session
+
+  const share = shares.find(s => s.id === id);
+  if (!share) return;
+
+  share.flags = (share.flags || 0) + 1;
+  if (share.flags >= FLAG_THRESHOLD) share.flagged = true;
+
+  addSessionFlag(id);
+  saveShares();
+  renderShares();
+}
+
+// ── Safety tips accordion ────────────────────────────────────────
+function toggleSafetyTips() {
+  document.getElementById('safety-tips-accordion').classList.toggle('open');
+}
+
+// ── Condition-gated safety checklist ─────────────────────────────
+const SAFETY_CHECKLISTS = {
+  'Cooked / prepared': {
+    title: 'Cooked / prepared food — confirm all before posting',
+    items: [
+      'This food was prepared within the last 4 hours.',
+      'It has been kept covered and out of the temperature danger zone (40°F – 140°F).',
+      'There is no off-odor, discoloration, or visible spoilage.',
+      'It is properly packaged or covered for safe transfer.',
+    ]
+  },
+  'Use today — very ripe': {
+    title: 'Very ripe produce — confirm all before posting',
+    items: [
+      'There is no visible mold on any part of the item.',
+      'The skin or outer layer is intact — not broken, leaking, or deeply bruised.',
+      'The item does not have a fermented or off smell.',
+    ]
+  }
+};
+
+function onConditionChange() {
+  const val = document.getElementById('s-condition').value;
+  const checklist = document.getElementById('safety-checklist');
+  const titleEl   = document.getElementById('checklist-title');
+  const itemsEl   = document.getElementById('checklist-items');
+
+  if (SAFETY_CHECKLISTS[val]) {
+    const cfg = SAFETY_CHECKLISTS[val];
+    titleEl.textContent = cfg.title;
+    itemsEl.innerHTML = cfg.items.map((item, i) => `
+      <div class="safety-check-item">
+        <input type="checkbox" id="sc-${i}" name="safety-check">
+        <label for="sc-${i}">${item}</label>
+      </div>`).join('');
+    checklist.classList.add('visible');
+  } else {
+    checklist.classList.remove('visible');
+    itemsEl.innerHTML = '';
+  }
+  // Clear any keyword block when condition changes
+  document.getElementById('keyword-block').classList.remove('visible');
+}
+
+function allSafetyChecked() {
+  const boxes = document.querySelectorAll('#safety-checklist input[name="safety-check"]');
+  if (boxes.length === 0) return true; // no checklist for this condition
+  return Array.from(boxes).every(b => b.checked);
+}
+
+// ── Allergen field ────────────────────────────────────────────────
+function onAllergenNone(cb) {
+  if (cb.checked) {
+    document.querySelectorAll('#allergen-grid input[name="allergen"]').forEach(el => {
+      if (el.value !== 'None') el.checked = false;
+    });
+  }
+}
+function onAllergenItem(cb) {
+  if (cb.checked) {
+    const noneBox = document.querySelector('#allergen-grid input[value="None"]');
+    if (noneBox) noneBox.checked = false;
+  }
+}
+function getSelectedAllergens() {
+  return Array.from(document.querySelectorAll('#allergen-grid input[name="allergen"]:checked'))
+    .map(el => el.value);
+}
+
+// ── Keyword hard-block ────────────────────────────────────────────
+const BLOCKED_KEYWORDS = [
+  // Mold & fungal
+  'mold', 'moldy', 'mouldy', 'mould', 'fungus', 'fuzzy', 'furry',
+  // Spoilage state
+  'spoiled', 'spoilt', 'spoiling', 'rotten', 'rotting', 'rot',
+  'gone off', 'gone bad', 'bad smell', 'off smell', 'off-smell',
+  'sour smell', 'foul smell', 'foul odor', 'off odor', 'off-odor',
+  'putrid', 'rancid', 'fermented', 'ferment',
+  // Decomposition
+  'decomposed', 'decomposing', 'slimy', 'slime', 'mushy', 'mushed',
+  'liquefied', 'black spot', 'green spot', 'off-color', 'discolored',
+  'contaminated', 'contamination',
+  // Infestation
+  'maggot', 'maggots', 'infested', 'infestation',
+  'larvae', 'larva', 'worm', 'worms', 'bug', 'bugs', 'insect', 'insects',
+  // Explicit expiry
+  'expired', 'past due', 'past expir',
+];
+
+function checkKeywords(text) {
+  const lower = text.toLowerCase();
+  return BLOCKED_KEYWORDS.find(kw => lower.includes(kw)) || null;
+}
+
+function scanAndBlock() {
+  const items = document.getElementById('s-items').value;
+  const notes = document.getElementById('s-notes').value;
+  const block = document.getElementById('keyword-block');
+  const msg   = document.getElementById('keyword-block-msg');
+
+  const hit = checkKeywords(items) || checkKeywords(notes);
+  if (hit) {
+    msg.innerHTML = `Your listing contains the term <strong>"${hit}"</strong>, which indicates a food safety concern. Items that are spoiled, molded, or otherwise unsafe <strong>cannot be shared</strong> on this board. Please remove the listing or correct the description if this was entered in error.`;
+    block.classList.add('visible');
+    block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return true; // blocked
+  }
+  block.classList.remove('visible');
+  return false; // clear
+}
+
+// ── Contact requirement toggle ───────────────────────────────────
+function updateContactRequirement() {
+  const method  = document.getElementById('s-contact-method').value;
+  const wrap    = document.getElementById('contact-details-wrap');
+  const input   = document.getElementById('s-contact');
+  const isInPerson = method === 'inperson';
+
+  wrap.style.opacity    = isInPerson ? '.4' : '1';
+  input.required        = !isInPerson;
+  input.disabled        = isInPerson;
+  if (isInPerson) input.value = '';
+
+  const placeholders = {
+    text:     'e.g. 555-0100',
+    email:    'e.g. hello@example.com',
+    call:     'e.g. 555-0100',
+    signal:   'e.g. username or number',
+    inperson: '',
+    other:    'Describe how to reach you',
+  };
+  input.placeholder = placeholders[method] || 'Contact details';
+}
+
+// ── Expiry helpers ───────────────────────────────────────────────
+function getExpiresAt(condition) {
+  const hours = CONDITION_EXPIRY_HOURS[condition] ?? 48;
+  return new Date(Date.now() + hours * 3600 * 1000).toISOString();
+}
+
+// Returns { text, state } where state is 'fresh' | 'warning' | 'critical' | 'expired'
+function timeRemainingLabel(expiresAt) {
+  if (!expiresAt) return null;
+  const msLeft = new Date(expiresAt).getTime() - Date.now();
+  if (msLeft <= 0) return { text: 'Expired', state: 'expired' };
+
+  const hrsLeft = msLeft / 3600000;
+  if (hrsLeft < 2) {
+    const mins = Math.ceil(msLeft / 60000);
+    return { text: `${mins} min left`, state: 'critical' };
+  }
+  if (hrsLeft < 6) {
+    return { text: `${Math.ceil(hrsLeft)} hrs left`, state: 'critical' };
+  }
+  if (hrsLeft < 24) {
+    return { text: `${Math.ceil(hrsLeft)} hrs left`, state: 'warning' };
+  }
+  const daysLeft = hrsLeft / 24;
+  if (daysLeft < 2) {
+    return { text: `${Math.ceil(hrsLeft)} hrs left`, state: 'fresh' };
+  }
+  return { text: `${Math.floor(daysLeft)}d ${Math.ceil(hrsLeft % 24)}h left`, state: 'fresh' };
+}
+
+// ── Recipe form ──────────────────────────────────────────────────
+function toggleRecipeForm() {
+  const wrap   = document.getElementById('recipe-form-wrap');
+  const toggle = document.getElementById('recipe-form-toggle');
+  const open   = wrap.classList.toggle('open');
+  toggle.innerHTML = open
+    ? `<svg style="width:1rem;height:1rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Cancel`
+    : `<svg style="width:1rem;height:1rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Post a recipe`;
+  if (open) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function toggleTag(btn) {
+  btn.classList.toggle('selected');
+}
+
+function submitRecipe(e) {
+  e.preventDefault();
+  const name   = document.getElementById('r-name').value.trim();
+  const serves = document.getElementById('r-serves').value.trim();
+  const instr  = document.getElementById('r-instructions').value.trim();
+
+  const ingredientInputs = document.querySelectorAll('#ingredients-list input');
+  const ingredients = Array.from(ingredientInputs)
+    .map(i => i.value.trim())
+    .filter(Boolean);
+
+  if (ingredients.length === 0) {
+    alert('Please add at least one ingredient.');
+    return;
+  }
+
+  const tags = Array.from(document.querySelectorAll('#dietary-tags .tag-btn.selected'))
+    .map(b => b.dataset.tag);
+
+  const recipe = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+    name, serves, ingredients, instructions: instr, tags,
+    date: new Date().toISOString()
+  };
+
+  recipes.unshift(recipe);
+  saveRecipes();
+  renderRecipes();
+
+  e.target.reset();
+  document.querySelectorAll('#dietary-tags .tag-btn.selected').forEach(b => b.classList.remove('selected'));
+  toggleRecipeForm();
+  window.scrollTo({ top: document.getElementById('recipe-grid').offsetTop - 120, behavior: 'smooth' });
+}
+
+// ── Recipe render ────────────────────────────────────────────────
+function filterRecipes(btn) {
+  document.querySelectorAll('#recipe-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeRecipeFilter = btn.dataset.filter;
+  renderRecipes();
+}
+
+function renderRecipes() {
+  const grid  = document.getElementById('recipe-grid');
+  const empty = document.getElementById('recipe-empty');
+  const count = document.getElementById('recipe-count');
+
+  const filtered = activeRecipeFilter === 'All'
+    ? recipes
+    : recipes.filter(r => r.tags && r.tags.includes(activeRecipeFilter));
+
+  count.textContent = recipes.length;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = filtered.map(r => `
+    <article class="recipe-card">
+      <div class="recipe-card-header">
+        <div style="display:flex;flex-wrap:wrap;gap:.375rem">
+          ${r.tags && r.tags.length
+            ? r.tags.map(t => `<span class="recipe-card-tag">${esc(t)}</span>`).join('')
+            : '<span class="recipe-card-tag" style="background:var(--cream)">General</span>'}
+        </div>
+        <span class="recipe-card-date">${fmtDate(r.date)}</span>
+      </div>
+      <h2 class="recipe-card-title">${esc(r.name)}</h2>
+      ${r.serves ? `<div class="recipe-card-serves">Serves ${esc(r.serves)}</div>` : ''}
+      <div class="ingredients-label">Ingredients</div>
+      <ul class="ingredients-ul">
+        ${r.ingredients.map(i => `<li>${esc(i)}</li>`).join('')}
+      </ul>
+      <p class="recipe-card-instructions">${esc(r.instructions).replace(/\n/g,'<br>')}</p>
+    </article>
+  `).join('');
+}
+
+// ── Food share form ──────────────────────────────────────────────
+function toggleShareForm() {
+  const wrap   = document.getElementById('share-form-wrap');
+  const toggle = document.getElementById('share-form-toggle');
+  const open   = wrap.classList.toggle('open');
+  toggle.innerHTML = open
+    ? `<svg style="width:1rem;height:1rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Cancel`
+    : `<svg style="width:1rem;height:1rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Post food to share`;
+  if (open) {
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Auto-fill area if location is known and field is still empty
+    if (userLabel) {
+      const areaInput = document.getElementById('s-area');
+      if (areaInput && !areaInput.value) {
+        areaInput.value = userLabel;
+        const hint = document.getElementById('area-label-hint');
+        if (hint) hint.textContent = '— filled from your location';
+      }
+    }
+  }
+}
+
+function toggleShareTag(btn) {
+  // category = single-select
+  document.querySelectorAll('#share-tags .tag-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+function submitShare(e) {
+  e.preventDefault();
+
+  // Guard 1: keyword hard-block
+  if (scanAndBlock()) return;
+
+  // Guard 2: safety checklist must be fully checked
+  if (!allSafetyChecked()) {
+    document.getElementById('safety-checklist').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('checklist-note').style.color = 'var(--tomato)';
+    document.getElementById('checklist-note').textContent = '⚠ Please confirm all safety items above before posting.';
+    return;
+  }
+
+  // Guard 3: allergen declaration required
+  const allergens = getSelectedAllergens();
+  if (allergens.length === 0) {
+    document.getElementById('allergen-grid').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('allergen-grid').style.outline = '2px solid var(--tomato)';
+    setTimeout(() => document.getElementById('allergen-grid').style.outline = '', 2000);
+    return;
+  }
+
+  const category  = document.querySelector('#share-tags .tag-btn.selected')?.dataset.tag || 'Other';
+  const condition = document.getElementById('s-condition').value;
+  const method    = document.getElementById('s-contact-method').value;
+  const contact   = document.getElementById('s-contact').value.trim();
+
+  const methodLabels = {
+    text: 'Text/SMS', email: 'Email', call: 'Phone',
+    signal: 'Signal/WhatsApp', inperson: 'Arrange at pickup', other: 'Other',
+  };
+
+  const share = {
+    id:            Date.now().toString(36) + Math.random().toString(36).slice(2),
+    items:         document.getElementById('s-items').value.trim(),
+    qty:           document.getElementById('s-qty').value.trim(),
+    condition,
+    area:          document.getElementById('s-area').value.trim(),
+    window:        document.getElementById('s-window').value.trim(),
+    contactMethod: methodLabels[method] || method,
+    contact,
+    notes:         document.getElementById('s-notes').value.trim(),
+    category,
+    allergens,
+    claimed:       false,
+    expired:       false,
+    flags:         0,
+    flagged:       false,
+    date:          new Date().toISOString(),
+    expiresAt:     getExpiresAt(condition),
+    lat: userLat !== null ? Math.round(userLat * 100) / 100 : null,
+    lng: userLng !== null ? Math.round(userLng * 100) / 100 : null,
+  };
+
+  shares.unshift(share);
+  saveShares();
+  renderShares();
+
+  e.target.reset();
+  document.querySelectorAll('#share-tags .tag-btn.selected').forEach(b => b.classList.remove('selected'));
+  // Reset safety checklist
+  document.getElementById('safety-checklist').classList.remove('visible');
+  document.getElementById('checklist-items').innerHTML = '';
+  document.getElementById('checklist-note').textContent = 'All boxes must be checked before you can post.';
+  document.getElementById('checklist-note').style.color = '';
+  document.getElementById('keyword-block').classList.remove('visible');
+  // Restore contact details field to default enabled/required state
+  const detailsWrap  = document.getElementById('contact-details-wrap');
+  const detailsInput = document.getElementById('s-contact');
+  if (detailsWrap)  detailsWrap.style.opacity = '1';
+  if (detailsInput) { detailsInput.required = true; detailsInput.disabled = false; detailsInput.placeholder = 'e.g. 555-0100'; }
+  toggleShareForm();
+  window.scrollTo({ top: document.getElementById('share-grid').offsetTop - 120, behavior: 'smooth' });
+}
+
+// ── Food share render ────────────────────────────────────────────
+function filterShares(btn) {
+  document.querySelectorAll('#share-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeShareFilter = btn.dataset.filter;
+
+  // "Near me" requires location — prompt if not yet enabled
+  if (activeShareFilter === '__nearby__' && userLat === null) {
+    requestLocation();
+  }
+
+  renderShares();
+}
+
+function claimShare(id) {
+  const s = shares.find(s => s.id === id);
+  if (s) { s.claimed = true; saveShares(); renderShares(); }
+}
+
+function unclaimShare(id) {
+  const s = shares.find(s => s.id === id);
+  if (s) { s.claimed = false; saveShares(); renderShares(); }
+}
+
+function renderShares() {
+  const grid  = document.getElementById('share-grid');
+  const empty = document.getElementById('share-empty');
+  const count = document.getElementById('share-count');
+  const now   = Date.now();
+
+  // Hard-delete listings older than 7 days
+  shares = shares.filter(s => now - new Date(s.date).getTime() < SHARE_TTL_MS);
+
+  // Auto-expire perishable listings past their expiresAt timestamp
+  let mutated = false;
+  shares.forEach(s => {
+    if (!s.claimed && !s.expired && s.expiresAt && new Date(s.expiresAt).getTime() <= now) {
+      s.expired = true;
+      mutated = true;
+    }
+  });
+  if (mutated) saveShares();
+
+  const active = shares.filter(s => !s.claimed && !s.expired);
+  count.textContent = active.length;
+
+  // Attach computed distance
+  const withDist = shares.map(s => {
+    const dist = (userLat !== null && s.lat != null && s.lng != null)
+      ? haversine(userLat, userLng, s.lat, s.lng)
+      : null;
+    return { ...s, _dist: dist };
+  });
+
+  // Filter & sort
+  let filtered;
+  if (activeShareFilter === '__nearby__') {
+    filtered = withDist.filter(s => s._dist !== null).sort((a, b) => a._dist - b._dist);
+  } else if (activeShareFilter === 'All') {
+    if (userLat !== null) {
+      const hasCoords = withDist.filter(s => s._dist !== null).sort((a, b) => a._dist - b._dist);
+      const noCoords  = withDist.filter(s => s._dist === null);
+      filtered = [...hasCoords, ...noCoords];
+    } else {
+      filtered = withDist;
+    }
+  } else {
+    filtered = withDist.filter(s => s.category === activeShareFilter);
+  }
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = filtered.map(s => {
+    const distBadge  = s._dist !== null
+      ? `<span class="listing-distance">${fmtMiles(s._dist)}</span>` : '';
+    const expiry     = timeRemainingLabel(s.expiresAt);
+    const expiryBadge = expiry
+      ? `<span class="expiry-badge ${expiry.state}">${esc(expiry.text)}</span>` : '';
+
+    // 2-hour caution badge for cooked/prepared items
+    const isCooked = s.condition === 'Cooked / prepared';
+    const ageHours = (now - new Date(s.date).getTime()) / 3600000;
+    const cautionBadge = (isCooked && ageHours >= 2 && !s.expired)
+      ? `<span class="expiry-badge caution">⚠ Posted ${Math.floor(ageHours)}h ago</span>` : '';
+
+    // Allergen row
+    const allergenList = Array.isArray(s.allergens) ? s.allergens : [];
+    const allergenRow = allergenList.length
+      ? `<div class="listing-meta-row">
+           <span class="listing-meta-key">Allergens</span>
+           <span class="listing-meta-val">
+             <div class="allergen-row">
+               ${allergenList.map(a => `<span class="allergen-tag${a === 'None' ? ' none-tag' : ''}">${esc(a)}</span>`).join('')}
+             </div>
+           </span>
+         </div>` : '';
+
+    let statusClass, statusText;
+    if (s.expired)      { statusClass = 'expired';   statusText = 'Expired'; }
+    else if (s.claimed) { statusClass = 'claimed';   statusText = 'Claimed'; }
+    else                { statusClass = 'available'; statusText = 'Available'; }
+
+    const contactLine = s.contactMethod
+      ? `<div class="listing-meta-row">
+           <span class="listing-meta-key">Contact</span>
+           <span class="listing-meta-val">
+             <strong>${esc(s.contactMethod)}</strong>
+             ${s.contact ? ` · ${esc(s.contact)}` : ''}
+           </span>
+         </div>` : '';
+
+    const alreadyFlagged = hasSessionFlag(s.id);
+    const flagCount      = s.flags || 0;
+    const isRemoved      = s.flagged; // 3+ flags
+
+    // Flag button — hidden once this session already flagged it or listing is removed
+    const flagBtn = (!isRemoved && !s.expired)
+      ? `<button
+           class="btn-flag${alreadyFlagged ? ' already-flagged' : ''}"
+           onclick="${alreadyFlagged ? '' : `flagShare('${s.id}')`}"
+           title="${alreadyFlagged ? 'You have already reported this listing' : 'Report a food safety concern'}"
+           ${alreadyFlagged ? 'disabled' : ''}>
+           <svg style="width:.75rem;height:.75rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+             <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+             <line x1="4" y1="22" x2="4" y2="15"/>
+           </svg>
+           ${alreadyFlagged ? 'Flagged' : 'Flag safety concern'}
+           ${flagCount > 0 ? `<span class="flag-count-badge">${flagCount}</span>` : ''}
+         </button>` : '';
+
+    // Inline confirmation panel
+    const confirmPanel = (!isRemoved && !s.expired)
+      ? `<div class="flag-confirm" id="flag-confirm-${s.id}" data-id="${s.id}">
+           <div class="flag-confirm-text">
+             <svg style="width:.875rem;height:.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+             Flag this listing as a food safety concern?
+           </div>
+           <div class="flag-confirm-sub">Use this only for items that appear spoiled, molded, or otherwise unsafe to consume. Listings that reach the reporting threshold are removed from the board automatically.</div>
+           <div class="flag-confirm-actions">
+             <button class="btn-flag-confirm" onclick="confirmFlag('${s.id}')">Yes, flag it</button>
+             <button class="btn-flag-cancel"  onclick="cancelFlag('${s.id}')">Cancel</button>
+           </div>
+         </div>` : '';
+
+    // Food safety warning banner — appears at 1–2 flags
+    const warningBanner = (flagCount > 0 && !isRemoved)
+      ? `<div class="flag-warning">
+           <svg style="width:.875rem;height:.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+           <span><strong>Food safety concern reported.</strong> A community member has flagged this listing. Exercise caution and verify the condition of items before accepting.</span>
+         </div>` : '';
+
+    let actionBtn;
+    if (s.expired) {
+      actionBtn = `<button class="btn-claim" disabled>Listing expired</button>`;
+    } else if (s.claimed) {
+      actionBtn = `<button class="btn-unclaim" onclick="unclaimShare('${s.id}')">Mark as available again</button>`;
+    } else {
+      actionBtn = `<button class="btn-claim" onclick="claimShare('${s.id}')">Mark as claimed</button>`;
+    }
+
+    // Fully removed card (FLAG_THRESHOLD reached)
+    if (isRemoved) {
+      return `
+      <div class="listing-card is-flagged-removed" style="border-color:var(--tomato)">
+        <div class="listing-card-top" style="background-color:var(--tomato)">
+          <span class="listing-card-type">${esc(s.category)}</span>
+          <span class="listing-card-status" style="border-color:rgba(255,255,255,.5)">Removed</span>
+        </div>
+        <div class="flagged-removed-body">
+          <svg class="flagged-removed-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+            <line x1="4" y1="22" x2="4" y2="15"/>
+          </svg>
+          <div class="flagged-removed-title">Removed — Food Safety Concern</div>
+          <p class="flagged-removed-body-text">This listing was reported by multiple community members and has been removed from the board. If you believe this was in error, please re-post with a clear description of the item's condition.</p>
+        </div>
+      </div>`;
+    }
+
+    return `
+    <div class="listing-card${s.expired ? ' is-expired' : ''}">
+      <div class="listing-card-top">
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+          <span class="listing-card-type">${esc(s.category)}</span>
+          ${distBadge}
+          ${expiryBadge}
+          ${cautionBadge}
+        </div>
+        <span class="listing-card-status ${statusClass}">${statusText}</span>
+      </div>
+      <div class="listing-card-body">
+        <div class="listing-card-items">${esc(s.items)}</div>
+        <div class="listing-card-qty">${esc(s.qty)} · ${esc(s.condition)}</div>
+        <div class="listing-meta">
+          <div class="listing-meta-row"><span class="listing-meta-key">Area</span><span class="listing-meta-val">${esc(s.area)}</span></div>
+          <div class="listing-meta-row"><span class="listing-meta-key">Pickup</span><span class="listing-meta-val">${esc(s.window)}</span></div>
+          ${contactLine}
+          ${allergenRow}
+          ${s.notes ? `<div class="listing-meta-row"><span class="listing-meta-key">Notes</span><span class="listing-meta-val">${esc(s.notes)}</span></div>` : ''}
+          <div class="listing-meta-row"><span class="listing-meta-key">Posted</span><span class="listing-meta-val">${fmtDate(s.date)}</span></div>
+        </div>
+      </div>
+      ${warningBanner}
+      <div class="listing-card-actions" style="justify-content:space-between;flex-wrap:wrap">
+        ${actionBtn}
+        ${flagBtn}
+      </div>
+      ${confirmPanel}
+    </div>`;
+  }).join('');
+}
+
+// ── Persistence ──────────────────────────────────────────────────
+function loadRecipes() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(RECIPES_KEY) || '[]');
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(r =>
+      r && typeof r === 'object'
+      && typeof r.id          === 'string'
+      && typeof r.name        === 'string'
+      && Array.isArray(r.ingredients)
+      && typeof r.instructions === 'string'
+      && typeof r.date         === 'string'
+    );
+  } catch { return []; }
+}
+function saveRecipes() {
+  localStorage.setItem(RECIPES_KEY, JSON.stringify(recipes));
+}
+function loadShares() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SHARES_KEY) || '[]');
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(s =>
+      s && typeof s === 'object'
+      && typeof s.id      === 'string'
+      && /^[a-z0-9]{1,40}$/.test(s.id)   // safe-id guard — prevents onclick injection via tampered storage
+      && typeof s.items   === 'string'
+      && typeof s.area    === 'string'
+      && typeof s.date    === 'string'
+      && typeof s.claimed === 'boolean'
+      && (s.lat == null || (isFinite(Number(s.lat)) && Math.abs(Number(s.lat)) <= 90))
+      && (s.lng == null || (isFinite(Number(s.lng)) && Math.abs(Number(s.lng)) <= 180))
+    ).map(s => ({
+      ...s,
+      expired:       Boolean(s.expired),
+      flags:         typeof s.flags === 'number' && s.flags >= 0 ? Math.floor(s.flags) : 0,
+      flagged:       Boolean(s.flagged),
+      allergens:     Array.isArray(s.allergens) ? s.allergens.filter(a => typeof a === 'string') : [],
+      expiresAt:     typeof s.expiresAt === 'string' ? s.expiresAt : null,
+      contactMethod: typeof s.contactMethod === 'string' ? s.contactMethod : '',
+      lat: s.lat != null ? Number(s.lat) : null,
+      lng: s.lng != null ? Number(s.lng) : null,
+    }));
+  } catch { return []; }
+}
+function saveShares() {
+  localStorage.setItem(SHARES_KEY, JSON.stringify(shares));
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+function esc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// ── Seed data ────────────────────────────────────────────────────
+function seedRecipes() {
+  recipes = [
+    {
+      id: 'seed1',
+      name: 'Pantry Tomato Rice',
+      serves: '3–4',
+      ingredients: ['1½ cups long-grain rice', '1 can (14 oz) crushed tomatoes', '1 small onion, diced', '3 cloves garlic, minced', 'Salt, olive oil & dried oregano'],
+      instructions: 'Sauté onion in oil until soft. Add garlic 1 min. Stir in tomatoes and 2 cups water. Add rice, salt, oregano. Bring to boil, cover, simmer 18 min. Rest 5 min before fluffing.',
+      tags: ['Vegan', 'Budget', 'One-pot'],
+      date: new Date(Date.now() - 2 * 86400000).toISOString()
+    },
+    {
+      id: 'seed2',
+      name: 'White Bean & Wilting Greens Soup',
+      serves: '4',
+      ingredients: ['1 can white beans, drained', 'Whatever greens are wilting (kale, spinach, chard)', '1 onion, chopped', '2 garlic cloves', 'Veggie or chicken broth + lemon'],
+      instructions: 'Soften onion and garlic in a pot. Add broth, bring to a simmer. Add beans and greens. Cook until greens are tender, 8–10 min. Squeeze lemon over at the end. Season well.',
+      tags: ['Vegan', 'Gluten-free', 'One-pot'],
+      date: new Date(Date.now() - 1 * 86400000).toISOString()
+    },
+    {
+      id: 'seed3',
+      name: 'Egg Fried Rice (Fridge-Clean Edition)',
+      serves: '2',
+      ingredients: ['2 cups cold cooked rice', '2 eggs, beaten', 'Soy sauce', 'Sesame oil', 'Any leftover veg — corn, peas, scallions'],
+      instructions: 'Heat oil in a wok or skillet on high. Add veg, stir 2 min. Push aside, scramble eggs in the pan. Mix in rice, break up clumps. Add soy sauce and sesame oil. Toss until heated through.',
+      tags: ['Budget', 'Kid-friendly'],
+      date: new Date(Date.now() - 3 * 3600000).toISOString()
+    },
+    {
+      id: 'seed4',
+      name: 'Spiced Lentil Dal',
+      serves: '4',
+      ingredients: ['1 cup red lentils', '1 can diced tomatoes', '1 onion, diced', '1 tsp each: cumin, turmeric, coriander', 'Salt + a splash of lemon or vinegar'],
+      instructions: 'Rinse lentils. Fry onion in oil until golden. Add spices, toast 30 sec. Add tomatoes and 3 cups water + lentils. Simmer 20–25 min until lentils dissolve. Finish with lemon. Serve over rice.',
+      tags: ['Vegan', 'Gluten-free', 'Budget', 'High-protein'],
+      date: new Date(Date.now() - 5 * 3600000).toISOString()
+    },
+    {
+      id: 'seed5',
+      name: 'Banana Oat Pancakes',
+      serves: '2',
+      ingredients: ['2 ripe bananas (the browner the better)', '1 cup rolled oats', '2 eggs', 'Pinch of salt', 'Cinnamon + a splash of vanilla'],
+      instructions: 'Blend or mash bananas with eggs until smooth. Stir in oats, salt, cinnamon, vanilla. Rest 5 min. Cook in a lightly oiled pan over medium, 2–3 min per side until set. Great with nut butter.',
+      tags: ['Gluten-free', 'Kid-friendly'],
+      date: new Date(Date.now() - 12 * 3600000).toISOString()
+    }
+  ];
+  saveRecipes();
+}
+
+function seedShares() {
+  const h = hrs => new Date(Date.now() + hrs * 3600000).toISOString();
+  shares = [
+    {
+      id: 'sshare1',
+      items: 'Summer squash & cherry tomatoes',
+      qty: 'About 3 lbs combined',
+      condition: 'Fresh / excellent',
+      area: 'Logan Square',
+      window: 'Today 4–7pm or tomorrow morning',
+      contactMethod: 'Text/SMS',
+      contact: '312-555-0142',
+      notes: 'From my garden. More than we can use!',
+      allergens: ['None'], category: 'Produce',
+      claimed: false, expired: false, flags: 0, flagged: false,
+      date: new Date(Date.now() - 2 * 3600000).toISOString(),
+      expiresAt: h(46), lat: null, lng: null,
+    },
+    {
+      id: 'sshare2',
+      items: 'Unopened lentils, chickpeas & basmati rice',
+      qty: '3 bags, sealed',
+      condition: 'Sealed / unopened',
+      area: 'Pilsen (60608)',
+      window: 'Weekday evenings, flexible',
+      contactMethod: 'Text/SMS',
+      contact: '312-555-0188',
+      notes: 'Moving soon. Best before 2026.',
+      allergens: ['None'], category: 'Pantry',
+      claimed: false, expired: false, flags: 0, flagged: false,
+      date: new Date(Date.now() - 8 * 3600000).toISOString(),
+      expiresAt: h(160), lat: null, lng: null,
+    },
+    {
+      id: 'sshare3',
+      items: 'Sourdough loaves (baked today)',
+      qty: '2 loaves',
+      condition: 'Cooked / prepared',
+      area: 'Wicker Park',
+      window: 'Today only, after 5pm',
+      contactMethod: 'Arrange at pickup',
+      contact: '',
+      notes: 'Plain and walnut-raisin.',
+      allergens: ['Wheat', 'Tree Nuts'], category: 'Baked goods',
+      claimed: false, expired: false, flags: 0, flagged: false,
+      date: new Date(Date.now() - 1 * 3600000).toISOString(),
+      expiresAt: h(3), lat: null, lng: null,
+    },
+    {
+      id: 'sshare4',
+      items: 'Fresh basil & mint',
+      qty: 'Large bunches of each',
+      condition: 'Fresh / excellent',
+      area: 'Andersonville',
+      window: 'Weekend mornings',
+      contactMethod: 'Email',
+      contact: 'herbs@example.com',
+      notes: 'Homegrown, no pesticides.',
+      allergens: ['None'], category: 'Homegrown',
+      claimed: false, expired: false, flags: 0, flagged: false,
+      date: new Date(Date.now() - 18 * 3600000).toISOString(),
+      expiresAt: h(30), lat: null, lng: null,
+    },
+  ];
+  saveShares();
+}
+
+// Re-render shares every 2 minutes so countdowns tick and auto-expiry fires
+setInterval(() => {
+  if (document.getElementById('page-foodshare').classList.contains('active')) {
+    renderShares();
+  }
+}, 2 * 60 * 1000);
+</script>
+</body>
+</html>
